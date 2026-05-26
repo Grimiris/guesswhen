@@ -1,7 +1,3 @@
- // ========================================================
-// JAVASCRIPT - PARTE 1: SETUP DATABASE E GESTIONE TIMER
-// ========================================================
-
 // 1. IMPORT MODULI CORRETTI CON WWW (Risolto errore CORS di gstatic)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, getDoc, collection, addDoc, getDocs, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
@@ -17,9 +13,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ========================================================
 // JAVASCRIPT LATO WEB - PARTE 2 di 6: PARSING INDIRIZZO URL
-// ========================================================
+
 const urlParams = new URLSearchParams(window.location.search);
 let betId = urlParams.get('id') || urlParams.get('ID');
 
@@ -170,10 +165,8 @@ async function controllaStato() {
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
 
-
-// ========================================================
 // JAVASCRIPT LATO WEB - PARTE 3 di 5: UTILITY DI VOTO E TIMER
-// ========================================================
+
 function avviaTimer(dataScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
@@ -202,7 +195,6 @@ function generaBottoniVoto(opzioni) {
         container.appendChild(btn);
     });
 }
-
 async function inviaVoto(opzioneScelta) {
     const loadingEl = document.getElementById('loading');
     const username = localStorage.getItem('identita_utente_global') || "";
@@ -240,10 +232,7 @@ async function inviaVoto(opzioneScelta) {
         setTimeout(() => { location.reload(); }, 100);
     } catch (e) { console.error(e); }
 }
-// ========================================================
 // JAVASCRIPT LATO WEB - PARTE 4 di 5: RENDERING DELLO SCREEN VERDETTO
-// ========================================================
-// ✅ Aggiungi dataScadenzaISO tra le parentesi
 function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
         let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
@@ -270,9 +259,7 @@ function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expiration
     } catch (e) { console.error(e); }
 }
 
-// ========================================================
 // REVISIONE CORRETTA: ENTRATA FUNZIONE MOSTRARISULTATI
-// ========================================================
 async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
@@ -442,10 +429,7 @@ function mostraStoricoSchermata() {
     } catch (e) { console.error(e); }
 }
 
-// ========================================================
 // MEMORIZZAZIONE, GRAFICA SALTERINA E STORICI LOCALI
-// ========================================================
-
 async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
     if (!localStorage.getItem(`token_elaborato_${idScommessa}`)) {
         let saldoAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
