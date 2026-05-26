@@ -31,10 +31,11 @@ const screenLoading = document.getElementById('screen-loading');
 const screenLogin = document.getElementById('screen-login');
 const screenPlayRoom = document.getElementById('screen-play-room');
 const storicoWrapper = document.getElementById('storico-wrapper');
+const bachecaPersonalPanel = document.getElementById('bacheca-personal-panel');
 
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 // ========================================================
-// JAVASCRIPT - PARTE 2 di 5: CONFIGURAZIONE SCHERMATE E FILTRI
+// JAVASCRIPT - PARTE 2 di 5: ACCESSO E LOGICA PALMARÈS
 // ========================================================
 async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
@@ -42,6 +43,7 @@ async function inizializzaFlussoPiattaforma() {
         if (screenLogin) screenLogin.classList.remove('hidden');
         if (storicoWrapper) storicoWrapper.classList.add('hidden');
         if (screenPlayRoom) screenPlayRoom.classList.add('hidden');
+        if (bachecaPersonalPanel) bachecaPersonalPanel.classList.add('hidden');
         
         document.getElementById('btn-salva-identita').onclick = () => {
             const nome = document.getElementById('input-username').value.trim();
@@ -53,13 +55,12 @@ async function inizializzaFlussoPiattaforma() {
         return;
     }
 
-    // Imposta il nome della persona loggata in alto a destra
     const elTopUserName = document.getElementById('top-user-name');
     if (elTopUserName) elTopUserName.innerText = `👤 ${localUsername.toUpperCase()}`;
 
     if (storicoWrapper) storicoWrapper.classList.remove('hidden');
+    if (bachecaPersonalPanel) bachecaPersonalPanel.classList.remove('hidden');
     
-    // Configura il menu a tendina per i filtri web
     const selectFiltro = document.getElementById('select-filtro-web');
     if (selectFiltro) {
         selectFiltro.onchange = () => {
@@ -68,7 +69,7 @@ async function inizializzaFlussoPiattaforma() {
     }
 
     await mostraStoricoSchermata("TUTTE");
-    await aggiornaTokenGrafica();
+    await aggiornaECompilaPalmaresUtente();
 
     if (!betId) {
         if (screenLoading) {
@@ -86,6 +87,62 @@ async function inizializzaFlussoPiattaforma() {
     }
 }
 
+// ✅ NUOVO: Scansiona il Cloud database e compila il Palmarès Personale (Premi Vinti / Sbagliati)
+async function aggiornaECompilaPalmaresUtente() {
+    const txtToken = document.getElementById('bacheca-token-count');
+    const txtRendimento = document.getElementById('bacheca-rendimento-text');
+    const listPremi = document.getElementById('bacheca-premi-list');
+    
+    if (!listPremi) return;
+    listPremi.innerHTML = "";
+
+    try {
+        const userIdNormalizzato = localUsername.toUpperCase().trim();
+        const userDoc = await getDoc(doc(db, "utenti_globali", userIdNormalizzato));
+        
+        let saldo = 0;
+        let vinte = 0;
+        let perse = 0;
+
+        if (userDoc.exists()) {
+            const uData = userDoc.data();
+            saldo = uData.token_totali || 0;
+            vinte = uData.sfide_indovinate || 0;
+            perse = uData.sfide_sbagliate || 0;
+        }
+
+        if (txtToken) txtToken.innerText = `GETTONI x${saldo}`;
+        if (txtRendimento) txtRendimento.innerHTML = `📈 Bilancio: <span style="color:#16A34A;">${vinte} Vinte</span> / <span style="color:#DC2626;">${perse} Perse</span>`;
+
+        // Scansione scommesse concluse per estrarre la lista testuale dei premi reali accumulati
+        const snapScommesse = await getDocs(collection(db, "scommesse"));
+        let contatorePremi = 0;
+
+        snapScommesse.forEach(sDoc => {
+            const s = sDoc.data();
+            if (s.risposta_corretta && !s.annullata) {
+                if (s.vincitore_estratto && s.vincitore_estratto.toUpperCase().trim() === userIdNormalizzato) {
+                    contatorePremi++;
+                    const li = document.createElement('li');
+                    li.innerHTML = `🏆 <b>HAI INDOVINATO E VINTO:</b> ${s.premio} (#${sDoc.id})`;
+                    listPremi.appendChild(li);
+                }
+                if (s.perdente_estratto && s.perdente_estratto.toUpperCase().trim() === userIdNormalizzato) {
+                    contatorePremi++;
+                    const li = document.createElement('li');
+                    li.style.color = "#991B1B";
+                    li.innerHTML = `🌶️ <b>HAI SBAGLIATO (PAGA LA PENITENZA):</b> ${s.premio} (#${sDoc.id})`;
+                    listPremi.appendChild(li);
+                }
+            }
+        });
+
+        if (contatorePremi === 0) {
+            listPremi.innerHTML = "<li style='color:#64748B; font-style:italic; border:none;'>Nessun verdetto ufficiale registrato finora.</li>";
+        }
+    } catch (e) { console.error("Errore palmares:", e); }
+}
+
 inizializzaFlussoPiattaforma();
 // ========================================================
 // JAVASCRIPT - PARTE 3 di 5: GESTIONE STANZA E TIMEOUT
@@ -101,7 +158,7 @@ async function eseguiStanzaGioco() {
         const data = docSnap.data();
         document.getElementById('room-id-tag').innerText = `#${betId}`;
         document.getElementById('room-question').innerText = data.domanda;
-        document.getElementById('room-reward').innerText = `🎁 Premio in palio: ${data.premio}`;
+        document.getElementById('room-reward').innerText = `🎁 PREMIO IN PALIO: ${data.premio}`;
 
         const badgeStato = document.getElementById('room-status-badge');
         if (data.annullata) {
@@ -152,7 +209,7 @@ function avviaTimerStanza(timestampScadenza) {
     setInterval(aggiorna, 1000);
 }
 // ========================================================
-// JAVASCRIPT - PARTE 4 di 5: LOGICA VOTO E MOTORE STELLE RATINGS
+// JAVASCRIPT - PARTE 4 di 5: ENGINE DI VOTO E REVIEWS
 // ========================================================
 function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
@@ -269,7 +326,12 @@ async function mostraRisultatiStanza(dataSfida) {
         const pStatus = document.getElementById('room-percent-status');
         if (dataSfida.risposta_corretta) {
             pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ ESTRATTO: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
-            if (!dataSfida.annullata) inizializzaValutazioneStelle();
+            if (!dataSfida.annullata) {
+                // Attiva la bacheca del gradimento a stelle solo sul verdetto concluso reale
+                inizializzaValutazioneStelle();
+                // Rinfresca istantaneamente il palmarès in cima per mostrare il premio appena preso
+                aggiornaECompilaPalmaresUtente();
+            }
         } else { pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`; }
 
         dataSfida.opzioni_disponibili.forEach(opz => {
@@ -301,14 +363,7 @@ async function modificaBilancioCloudClassifica(valore) {
 
 async function aggiornaTokenGrafica() {
     const badge = document.getElementById('top-token-counter');
-    if (!badge || !localUsername) return;
-    try {
-        const userIdNormalizzato = localUsername.toUpperCase().trim();
-        const docSnap = await getDoc(doc(db, "utenti_globali", userIdNormalizzato));
-        let saldo = 0;
-        if (docSnap.exists()) { saldo = docSnap.data().token_totali || 0; }
-        badge.innerText = `TOKENS x${saldo}`;
-    } catch (e) { console.error(e); }
+    if (badge) badge.style.display = 'none'; // Rimosso dalla votazione, gestito nel Palmarès
 }
 
 async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
