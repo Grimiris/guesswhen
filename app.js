@@ -56,13 +56,13 @@ async function controllaStato() {
         const thanksSectionEl = document.getElementById('thanks-section');
         const identitySectionEl = document.getElementById('identity-section');
 
-        // ✅ CORREZIONE CRITICA: Se l'utente non ha un Nickname, blocca tutto e mostra il login SUBITO, anche a scommessa chiusa!
+        // 1. Se l'utente non ha un Nickname, mostra SOLO il modulo di login e blocca il resto
         if (!localUsername) {
             if (loadingEl) loadingEl.style.display = 'none';
             if (contentEl) contentEl.classList.remove('hidden');
             if (identitySectionEl) identitySectionEl.classList.remove('hidden');
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) resultsSectionEl.classList.add('hidden');
+            if (resultsSectionEl) { resultsSectionEl.classList.add('hidden'); }
             
             const txtContatore = document.getElementById('token-count');
             if (txtContatore) txtContatore.innerText = "Registra un nickname per attivare i gettoni 🪙";
@@ -77,8 +77,11 @@ async function controllaStato() {
                     alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
                 }
             };
-            return; // Blocca l'esecuzione qui finché non salva il nome
+            return; 
         }
+
+        // 2. Se il Nickname esiste, nasconde il modulo di login per sicurezza prima di procedere
+        if (identitySectionEl) identitySectionEl.classList.add('hidden');
 
         console.log("Lettura scommessa cloud ID:", betId);
         const docRef = doc(db, "scommesse", betId);
@@ -98,7 +101,6 @@ async function controllaStato() {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
 
-        // Forza il rinfresco del portafoglio cloud ora che l'utente ha un nome
         if (typeof aggiornaTokenGrafica === "function") {
             await aggiornaTokenGrafica();
         }
@@ -129,8 +131,9 @@ async function controllaStato() {
         if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (identitySectionEl) identitySectionEl.classList.add('hidden');
-            if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
+            if (resultsSectionEl) {
+                resultsSectionEl.classList.remove('hidden');
+            }
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
             avviaTimer(dataScadenza);
@@ -144,6 +147,7 @@ async function controllaStato() {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
+                // ✅ CORRETTO: Assicura che la sezione voto si accenda e quella del login si spenga
                 if (identitySectionEl) identitySectionEl.classList.add('hidden');
                 if (voteSectionEl) voteSectionEl.classList.remove('hidden');
                 generaBottoniVoto(opzioniDisponibili);
