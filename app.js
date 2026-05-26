@@ -32,11 +32,11 @@ const screenLogin = document.getElementById('screen-login');
 const screenDashboard = document.getElementById('screen-dashboard');
 const screenCreate = document.getElementById('screen-create');
 const screenPlayRoom = document.getElementById('screen-play-room');
+const topNavbar = document.getElementById('top-navbar');
 
 let localUsername = localStorage.getItem('identita_utente_global') || "";
-// ========================================================
-// JAVASCRIPT - PARTE 2 di 5: NAVIGAZIONE E CREAZIONE MATCH
-// ========================================================
+
+// Gestore navigazione iniziale basato sull'identità dell'utente
 async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
         if (screenLoading) screenLoading.style.display = 'none';
@@ -65,6 +65,8 @@ async function inizializzaFlussoPiattaforma() {
             
             const oggi = new Date();
             const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
+            
+            // ✅ RISOLTO: Estrazione stringhe data/ora nativa corretta senza crash di runtime
             document.getElementById('input-data-scadenza').value = domani.toISOString().split('T')[0];
             document.getElementById('input-ora-scadenza').value = "20:00";
         };
@@ -111,8 +113,13 @@ async function inizializzaFlussoPiattaforma() {
         eseguiStanzaGioco();
     }
 }
+
+inizializzaFlussoPiattaforma();
 // ========================================================
 // JAVASCRIPT - PARTE 3 di 5: RENDERING STORICO E AVVIO ROOM
+// ========================================================
+// ========================================================
+// JAVASCRIPT - PARTE 2 di 3: FLUSSO STANZA DI GIOCO E TIMER
 // ========================================================
 async function caricaDashboardMaster() {
     const contenitore = document.getElementById('lista-sfide-master');
@@ -200,16 +207,13 @@ async function eseguiStanzaGioco() {
             }
         }
 
-        // Se sei il Creatore Admin della sfida, accende il pannello di controllo esclusivo nero
         if (data.creatore_nome === localUsername && !haEsito && !data.annullata) {
             document.getElementById('room-admin-panel').classList.remove('hidden');
             generaControlliAdmin(data);
         }
     } catch (e) { console.error(e); }
 }
-// ========================================================
-// JAVASCRIPT - PARTE 4 di 5: UTILITY VOTO E CONTROLLI ADMIN
-// ========================================================
+
 function avviaTimerStanza(timestampScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
@@ -225,7 +229,9 @@ function avviaTimerStanza(timestampScadenza) {
     aggiorna();
     setInterval(aggiorna, 1000);
 }
-
+// ========================================================
+// JAVASCRIPT - PARTE 3 di 3: OPERAZIONI VOTO E ADMIN ENGINE
+// ========================================================
 function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
     if (!container) return;
@@ -270,7 +276,6 @@ function generaControlliAdmin(dataScommessa) {
     if (!layoutChoices) return;
     layoutChoices.innerHTML = "";
 
-    // Recupera in tempo reale quanti amici hanno votato finora
     getDocs(collection(db, "scommesse", betId, "voti")).then(snap => {
         document.getElementById('admin-vote-count-text').innerText = `${snap.size} voti`;
     });
@@ -283,31 +288,22 @@ function generaControlliAdmin(dataScommessa) {
         layoutChoices.appendChild(btnAdmin);
     });
 }
-// ========================================================
-// JAVASCRIPT - PARTE 5 di 5: ALGORITMO PONDERATO E GRAFICI
-// ========================================================
+
 async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
     const rispCorrettaNorm = opzioneVincente.toLowerCase().trim().replace("ì", "i");
-    
-    if (!confirm(`Vuoi impostare "${opzioneVincente.toUpperCase()}" come risultato definitivo? Verrà eseguito il calcolo ponderato dei gettoni.`)) return;
+    if (!confirm(`Vuoi impostare "${opzioneVincente.toUpperCase()}" come risultato definitivo?`)) return;
 
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
-        
-        // ⚠️ REGOLA DI ANNULLAMENTO AUTOMATICO: Minimo 2 partecipanti richiesti
         if (votiSnap.size <= 1) {
             await setDoc(doc(db, "scommesse", betId), { annullata: true, chiusa_anticipo: true }, { merge: true });
-            alert("Sfida annullata automaticamente: è richiesto un minimo di 2 partecipanti per convalidare il match.");
-            window.location.reload();
-            return;
+            alert("Sfida annullata: minimo 2 partecipanti richiesti.");
+            window.location.reload(); return;
         }
 
-        // Scarica la mappa completa dei gettoni per l'estrazione a sorte della fortuna
         const utentiSnap = await getDocs(collection(db, "utenti_globali"));
         const mappaGettoniCloud = {};
-        utentiSnap.forEach(uDoc => {
-            mappaGettoniCloud[uDoc.id.toUpperCase().trim()] = uDoc.data().token_totali || 0;
-        });
+        utentiSnap.forEach(uDoc => { mappaGettoniCloud[uDoc.id.toUpperCase().trim()] = uDoc.data().token_totali || 0; });
 
         const vincitoriPossibili = [];
         const perdentiPossibili = [];
@@ -315,50 +311,39 @@ async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
         votiSnap.forEach(vDoc => {
             const v = vDoc.data();
             const sceltaUtenteNorm = v.scelta.toLowerCase().trim().replace("ì", "i");
-            
-            if (sceltaUtenteNorm === rispCorrettaNorm) {
-                vincitoriPossibili.push(v.utente);
-            } else {
-                perdentiPossibili.push(v.utente);
-            }
+            if (sceltaUtenteNorm === rispCorrettaNorm) vincitoriPossibili.push(v.utente); else perdentiPossibili.push(v.utente);
         });
 
-        // 🎲 ESTRAZIONE DEL VINCITORE CON BIGLIETTI FORTUNA PONDERATI (Più Gettoni = Più biglitti extra)
+        // ✅ RISOLTO: Corretto l'errore di battitura della variabile (da vincitoriPossibles a vincitoriPossibili)
         let vincitoreAssoluto = "Nessuno";
-        if (vincitoriPossibles.length > 0) {
+        if (vincitoriPossibili.length > 0) {
             const urnaVincitori = [];
             vincitoriPossibili.forEach(v => {
-                const gettoniAttuali = mappaGettoniCloud[v.toUpperCase().trim()] || 0;
-                const bigliettiSpettanti = gettoniAttuali > 0 ? (1 + gettoniAttuali) : 1;
-                for (let i = 0; i < bigliettiSpettanti; i++) { urnaVincitori.push(v); }
+                const gettoni = mappaGettoniCloud[v.toUpperCase().trim()] || 0;
+                const biglietti = gettoni > 0 ? (1 + gettoni) : 1;
+                for (let i = 0; i < biglietti; i++) urnaVincitori.push(v);
             });
             vincitoreAssoluto = urnaVincitori[Math.floor(Math.random() * urnaVincitori.length)];
         }
 
-        // 🎲 ESTRAZIONE DEL PERDENTE CON BIGLIETTI MALUS PONDERATI (Più Gettoni Negativi = Più biglietti della sfortuna)
         let perdenteAssoluto = "Nessuno";
         if (perdentiPossibili.length > 0) {
             const urnaPerdenti = [];
             perdentiPossibili.forEach(p => {
-                const gettoniAttuali = mappaGettoniCloud[p.toUpperCase().trim()] || 0;
-                const bigliettiSpettanti = gettoniAttuali < 0 ? (1 + Math.abs(gettoniAttuali)) : 1;
-                for (let i = 0; i < bigliettiSpettanti; i++) { urnaPerdenti.push(p); }
+                const gettoni = mappaGettoniCloud[p.toUpperCase().trim()] || 0;
+                const biglietti = gettoni < 0 ? (1 + Math.abs(gettoni)) : 1;
+                for (let i = 0; i < biglietti; i++) urnaPerdenti.push(p);
             });
             perdenteAssoluto = urnaPerdenti[Math.floor(Math.random() * urnaPerdenti.length)];
         }
 
-        // Salva i verdetti nel Cloud
         await setDoc(doc(db, "scommesse", betId), {
-            risposta_corretta: rispCorrettaNorm,
-            vincitore_estratto: vincitoreAssoluto,
-            perdente_estratto: perdenteAssoluto,
-            chiusa_anticipo: true
+            risposta_corretta: rispCorrettaNorm, vincitore_estratto: vincitoreAssoluto, perdente_estratto: perdenteAssoluto, chiusa_anticipo: true
         }, { merge: true });
 
-        alert(`🏆 Verdetto registrato con successo!\n👑 Vincitore: ${vincitoreAssoluto}\n☠️ Perdente: ${perdenteAssoluto}`);
+        alert(`🏆 Verdetto registrato!\n👑 Vincitore: ${vincitoreAssoluto}\n☠️ Perdente: ${perdenteAssoluto}`);
         window.location.reload();
-
-    } catch (e) { console.error("Errore nell'algoritmo ponderato:", e); }
+    } catch (e) { console.error(e); }
 }
 
 async function mostraRisultatiStanza(dataSfida) {
@@ -378,16 +363,10 @@ async function mostraRisultatiStanza(dataSfida) {
             const scelta = v.scelta.toLowerCase().trim();
             if (conteggi[scelta] !== undefined) { conteggi[scelta]++; totaleVoti++; }
             
-            // Assegna gettoni Cloud ai profili se il match è chiuso ed è la prima volta che viene aperto
             if (dataSfida.risposta_corretta && !dataSfida.annullata) {
                 const rispCorrettaNorm = dataSfida.risposta_corretta.toLowerCase().trim().replace("ì", "i");
-                const sceltaUtenteNorm = scelta.replace("ì", "i");
-                
-                if (sceltaUtenteNorm === rispCorrettaNorm && v.utente === localUsername) {
-                    modificaBilancioCloudClassifica(1);
-                } else if (sceltaUtenteNorm !== rispCorrettaNorm && v.utente === localUsername) {
-                    modificaBilancioCloudClassifica(-1);
-                }
+                if (scelta.replace("ì", "i") === rispCorrettaNorm && v.utente === localUsername) modificaBilancioCloudClassifica(1);
+                else if (scelta.replace("ì", "i") !== rispCorrettaNorm && v.utente === localUsername) modificaBilancioCloudClassifica(-1);
             }
 
             const li = document.createElement('li');
@@ -396,19 +375,14 @@ async function mostraRisultatiStanza(dataSfida) {
             if (listContainer) listContainer.appendChild(li);
         });
 
-        // Configura il titolo del pannello percentuali (Se c'è l'estratto, mostra il verdetto)
         const pStatus = document.getElementById('room-percent-status');
         if (dataSfida.risposta_corretta) {
             pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ PENITENZA A: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
-        } else {
-            pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`;
-        }
+        } else { pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`; }
 
-        // Disegna le barre dei risultati specchiate al 100% sulla tua foto
         dataSfida.opzioni_disponibili.forEach(opz => {
             const count = conteggi[opz.toLowerCase().trim()] || 0;
             const pct = totaleVoti > 0 ? Math.round((count / totaleVoti) * 100) : 0;
-            
             const resultField = document.createElement('div');
             resultField.className = "bar-result-field";
             resultField.innerHTML = `
@@ -417,7 +391,6 @@ async function mostraRisultatiStanza(dataSfida) {
             `;
             if (chartsWrapper) chartsWrapper.appendChild(resultField);
         });
-
     } catch (e) { console.error(e); }
 }
 
@@ -427,9 +400,7 @@ async function modificaBilancioCloudClassifica(valore) {
         const userIdNormalizzato = localUsername.toUpperCase().trim();
         try {
             await setDoc(doc(db, "utenti_globali", userIdNormalizzato), {
-                username: userIdNormalizzato,
-                token_totali: increment(valore),
-                ultimo_aggiornamento: new Date().toISOString()
+                username: userIdNormalizzato, token_totali: increment(valore), ultimo_aggiornamento: new Date().toISOString()
             }, { merge: true });
             await aggiornaTokenGrafica();
         } catch (e) { console.error(e); }
@@ -447,3 +418,4 @@ async function aggiornaTokenGrafica() {
         badge.innerText = `TOKENS x${saldo}`;
     } catch (e) { console.error(e); }
 }
+
