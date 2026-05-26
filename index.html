@@ -1,0 +1,80 @@
+ <!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuessWhen 🔮 Scommessa Blindata</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="card">
+    <div id="loading">Caricamento in corso... ⏳</div>
+    
+    <div id="content" class="hidden">
+        <h1 id="question">Domanda</h1>
+        <div class="reward-box" id="reward">🎁 Premio: ...</div>
+        <br>
+        
+        <!-- SEZIONE DEL TIMER VISIVO -->
+        <div id="timer-container" style="text-align: center; margin: 15px 0; font-weight: bold;"></div>
+
+        <!-- 🛠️ PANNELLO DI CONTROLLO AMMINISTRATORE SEGRETO -->
+        <div id="admin-panel" class="hidden" style="background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 15px; margin: 15px 0; font-family: sans-serif; text-align: left;">
+            <h3 style="margin-top:0; color:#D97706; font-size:16px;">🛠️ Pannello Organizzatore</h3>
+            <p style="font-size:12px; margin-bottom:12px; color:#78350F;">Puoi bloccare i voti o assegnare la risposta vincente in qualsiasi momento.</p>
+            
+            <div style="margin-bottom: 15px; border-bottom: 1px dashed #FCD34D; padding-bottom: 12px;">
+                <button id="btn-chiudi-anticipo" style="background:#EF4444; color:white; border:none; padding:8px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:bold; width:100%;">
+                    🔒 Blocca i Voti (Chiudi in Anticipo)
+                </button>
+            </div>
+            
+            <div id="admin-risposta-section">
+                <label style="font-size:13px; font-weight:bold; display:block; margin-bottom:8px; color:#78350F;">👑 Decreta il Risultato Ufficiale (Anche Subito):</label>
+                <div id="admin-options-actions" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+            </div>
+        </div>
+
+        <!-- 1. SEZIONE VOTO -->
+       <div id="vote-section">
+            <div id="welcome-user-box" class="hidden"></div>
+            <input type="text" id="username" class="input-name" placeholder="Inserisci il tuo Nome">
+            <div id="options-container"></div>
+        </div>
+
+        <!-- 2. SCHERMATA ATTESA -->
+        <div id="thanks-section" class="hidden">
+            <div style="font-size: 48px; margin-bottom: 10px;">🤫</div>
+            <h2>Voto registrato in segreto!</h2>
+            <p>Le percentuali e i vincitori saranno rivelati solo allo scadere o alla chiusura del Master.</p>
+        </div>
+
+        <!-- 3. SCHERMATA VERDETTO FINALE -->
+        <div id="results-section" class="hidden">
+            <h2>Risultati Finali! 📊</h2>
+            <div id="charts-container" style="margin-bottom: 20px;"></div>
+            <div id="winners-list"></div>
+            <h3>❌ Altri Partecipanti:</h3>
+            <ul id="losers-list" style="padding: 0; margin: 0;"></ul>
+        </div>
+
+        <!-- 4. SEZIONE STORICO LOCALE + CREAZIONE DIRETTA -->
+        <div class="storico-sezione" style="margin-top: 25px; border-top: 1px solid #E2E8F0; padding-top: 20px;">
+            
+            <!-- Box Gettoni -->
+            <div class="token-balance-box" style="display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                <div id="token-display">🪙 Il tuo Bilancio Token: <span id="token-count" style="font-weight: bold;">0</span></div>
+                <button id="btn-usa-token" class="btn-option" style="background-color: #B2EBF2; margin: 0; padding: 8px 12px; font-size: 12px; border-radius: 10px; width: auto; cursor: pointer;">Spendi 1 Token per salvarti 🛡️</button>
+            </div>
+            <h3>📜 Il tuo Storico Sfide:</h3>
+            <div id="storico-container"></div>
+        </div>
+    </div>
+</div>
+ 
+<script type="module" src="app.js?v=1.6"></script>
+</body>
+</html>
+
+
