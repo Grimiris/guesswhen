@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔮 GuessWhen Room</title>
     <style>
-        /* 🎨 STILI GRAFICI COERENTI CON IL PROGETTO */
+        /* 🎨 REVISIONE COMPLETA LAYOUT E STRUTTURE GRAFICHE */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; color: #1E293B; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; max-width: 450px; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .card { background: white; max-width: 450px; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); box-sizing: border-box; position: relative; }
         h2 { margin-top: 0; color: #0F172A; text-align: center; }
         .hidden { display: none !important; }
         .status-badge { display: inline-block; background: #CBD5E1; color: #334155; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; margin-bottom: 15px; }
@@ -15,9 +15,12 @@
         .btn-option { display: block; width: 100%; padding: 12px; margin: 8px 0; background: #2563EB; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .btn-option:hover { background: #1D4ED8; }
         input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #CBD5E1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        
+        /* Grafica avanzata portafoglio Master */
         .token-balance-box { background: #EDF2F7; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14px; border: 1px solid #E2E8F0; }
         .token-positivo { background: #E8F5E9; color: #2E7D32; border-color: #C8E6C9; }
         .token-negativo { background: #FFEBEE; color: #C62828; border-color: #FFCDD2; }
+        
         ul { padding: 0; margin: 0; }
         .chart-bar { position: relative; background: #F1F5F9; height: 35px; border-radius: 6px; margin: 8px 0; overflow: hidden; display: flex; align-items: center; }
         .chart-fill { position: absolute; top: 0; left: 0; height: 100%; background: #DBEAFE; transition: width 0.5s ease; }
@@ -28,32 +31,34 @@
 <body>
 
     <div class="card">
-        <!-- 🪙 BOX TOKEN NATIVO (In cima) -->
-        <div class="token-balance-box">
-            <span id="token-count">0 (In Pari 🤝)</span>
-            <br>
-            <button id="btn-usa-token">🛡️ Usa 1 Token Salvavita</button>
-        </div>
-
-        <!-- ⏳ SCHERMATA CARICAMENTO INIZIALE -->
-        <div id="loading" style="text-align: center; padding: 30px; font-weight: 500; color: #64748B;">
+        
+        <!-- ⏳ 1. L'UNICO ELEMENTO VISIBILE ALL'AVVIO (Tutto il resto è congelato) -->
+        <div id="loading" style="text-align: center; padding: 40px; font-weight: bold; color: #64748B; font-size: 16px;">
             Caricamento in corso... ⏳
         </div>
 
-        <!-- 🔮 CONTENUTO PRINCIPALE DELLA SFIDA / QUIZ -->
+        <!-- 🔮 2. IL CONTENITORE PRINCIPALE (Incluso gettoni e storico) SI ACCENDE SOLO A CARICAMENTO ULTIMATO -->
         <div id="content" class="hidden">
+            
+            <!-- 🪙 PORTAFOGLIO DEI GETTONI (Adesso protetto dentro content) -->
+            <div class="token-balance-box">
+                <span id="token-count">0 (In Pari 🤝)</span>
+                <br>
+                <button id="btn-usa-token">🛡️ Usa 1 Token Salvavita</button>
+            </div>
+
             <center><span id="challenge-title" class="status-badge">🔮 SFIDA DI GRUPPO</span></center>
             <h2 id="question">Caricamento domanda...</h2>
             <div id="timer-container"></div>
             <p id="reward" style="text-align: center; font-weight: bold; color: #475569; margin-bottom: 25px;"></p>
 
-            <!-- SEZIONE 1: REGISTRAZIONE UTENTE (NICKNAME) -->
+            <!-- SEZIONE REGISTRAZIONE UTENTE -->
             
                 <input type="text" id="input-username" placeholder="Inserisci il tuo Nickname...">
                 <button id="btn-salva-identita" class="btn-option" style="background: #10B981;">Salva Nickname ed Entra</button>
             </div>
 
-            <!-- SEZIONE 2: BOX DI VOTO ATTIVO -->
+            <!-- BOX DI VOTO ATTIVO -->
             <div id="vote-section" class="hidden">
                 <div id="welcome-user-box" style="margin-bottom: 10px; font-weight: 500; text-align: center;"></div>
                 <div id="options-container">
@@ -62,7 +67,7 @@
                 </div>
             </div>
 
-            <!-- SEZIONE 3: GRAFICI E VERDETTI -->
+            <!-- GRAFICI E VERDETTI -->
             <div id="results-section" class="hidden">
                 <div id="winners-list" style="margin-bottom: 10px;"></div>
                 <div id="losers-list" style="margin-bottom: 15px;"></div>
@@ -71,7 +76,7 @@
                 <ul id="consolation-list"></ul>
             </div>
 
-            <!-- SEZIONE 4: SCHERMATA RINGRAZIAMENTO DOPO IL VOTO -->
+            <!-- RINGRAZIAMENTO POST-VOTO -->
             <div id="thanks-section" class="hidden">
                 <div style="background: #E0F2FE; color: #0369A1; padding: 15px; text-align: center; border-radius: 8px; font-weight: 500; font-size: 14px;">
                     ✅ Voto registrato con successo!
@@ -79,18 +84,20 @@
                     <span style="font-size: 12px; color: #0C4A6E;">Resta in questa pagina e attendi il verdetto ufficiale del Master! ⏱</span>
                 </div>
             </div>
-        </div>
 
-        <!-- 📜 SEZIONE STORICO LOCALE (In fondo) -->
-        <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 25px 0 15px 0;">
-        <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px; text-align: center;">📜 Storico Ultime Scommesse</h4>
-        <div id="storico-container"></div>
+            <!-- 📜 SEZIONE STORICO LOCALE (Adesso protetta e ordinata dentro content) -->
+            <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 25px 0 15px 0;">
+            <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px; text-align: center;">📜 Storico Ultime Scommesse</h4>
+            <div id="storico-container"></div>
+
+        </div> <!-- Fine blocco #content -->
     </div>
 
-    <!-- 🌟 CORE SCRIPT LOADING: Il parametro v=6.5 distrugge la cache obsoleta dei telefoni -->
-    <script type="module" src="app.js?v=6.5"></script>
+    <!-- 🌟 PARAMETRO DI PREVENZIONE CACHE AGGIORNATO -->
+    <script type="module" src="app.js?v=8.5"></script>
 
 </body>
+</html>
 </html>
 
 
