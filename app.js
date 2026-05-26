@@ -1,6 +1,6 @@
-/ 1. IMPORT MODULI CORRETTI CON WWW (Risolto errore CORS di gstatic)
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, addDoc, getDocs, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocs, collection, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 const firebaseConfig = {
     apiKey: "AIzaSyB1Ccv6r5Br2A03iclkRnxGjXQhGEhrzUQ",
     authDomain: "guesswhen.firebaseapp.com",
@@ -13,9 +13,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ========================================================
-// JAVASCRIPT - PARTE 2 di 6: PARSING URL E BOTTONE TOKEN
-// ========================================================
 const urlParams = new URLSearchParams(window.location.search);
 let betId = urlParams.get('id') || urlParams.get('ID');
 
@@ -23,61 +20,29 @@ if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
         const parts = rawUrl.split("id=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts[1]) ? parts[1].substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
         const parts = rawUrl.split("ID=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
-    }
-}
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const urlParams = new URLSearchParams(window.location.search);
-let betId = urlParams.get('id') || urlParams.get('ID');
-
-if (!betId) {
-    const rawUrl = window.location.href;
-    if (rawUrl.includes("id=")) {
-        const parts = rawUrl.split("id=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
-    } else if (rawUrl.includes("ID=")) {
-        const parts = rawUrl.split("ID=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts[1]) ? parts[1].substring(0, 6) : null;
     }
 }
 
 const loadingEl = document.getElementById('loading');
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
-if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-
-const btnUsaToken = document.getElementById('btn-usa-token');
-if (btnUsaToken) {
-    btnUsaToken.onclick = () => {
-        let tokenAttuali = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        if (tokenAttuali <= 0) {
-            alert("Non hai abbastanza Token attivi per salvarti! 😭");
-            return;
-        }
-        if (confirm("Vuoi spendere 1 Token Bonus per annullare la penitenza?")) {
-            tokenAttuali -= 1;
-            localStorage.setItem('saldo_token_global', tokenAttuali);
-            if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-            alert("🛡️ Token utilizzato! Sei salvo.");
-        }
-    };
-}
-
+// Avvio differenziato: esegue i moduli solo dopo aver verificato l'identità
 if (!betId) {
-    if (typeof mostraSchermataInizialeSenzaId === "function") mostraSchermataInizialeSenzaId();
+    if (loadingEl) {
+        loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter entrare nel tavolo di gioco con i tuoi amici! 🤝</p></div>`;
+    }
+    if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+    if (localUsername && typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
 } else {
     betId = betId.trim();
     controllaStato();
 }
 // ========================================================
-// JAVASCRIPT - PARTE 2 di 5: CORE ENGINE DI STATO CLOUD
+// JAVASCRIPT - PARTE 2 di 3: LOGICA DI STATO E BOTTONI VOTO
 // ========================================================
 async function controllaStato() {
     try {
@@ -86,7 +51,7 @@ async function controllaStato() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato.`;
+            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato nel database server.`;
             return;
         }
 
@@ -107,7 +72,12 @@ async function controllaStato() {
         if (rewardEl) {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
-        
+
+        // Forza il calcolo del portafoglio cloud prima di mostrare l'interfaccia
+        if (localUsername && typeof aggiornaTokenGrafica === "function") {
+            await aggiornaTokenGrafica();
+        }
+
         if (loadingEl) loadingEl.style.display = 'none';
         if (contentEl) contentEl.classList.remove('hidden');
 
@@ -118,6 +88,7 @@ async function controllaStato() {
                 resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata. Nessun gettone modificato!</p>`;
                 resultsSectionEl.classList.remove('hidden');
             }
+            if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
             return; 
         }
 
@@ -126,7 +97,7 @@ async function controllaStato() {
         const isChiusaManualmente = data.chiusa_anticipo === true;
         const haRispostaUfficiale = data.risposta_corretta !== undefined && data.risposta_corretta !== null && data.risposta_corretta !== "";
 
-        if (typeof salvaInStoricoLocale === "function") {
+        if (localUsername && typeof salvaInStoricoLocale === "function") {
             salvaInStoricoLocale(betId, data.domanda, data.risposta_corretta, data.timestamp_scadenza || data.data_scadenza);
         }
 
@@ -138,50 +109,44 @@ async function controllaStato() {
             }
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
+            // Se l'utente non ha un nickname, blocca la visualizzazione e mostra solo il modulo di registrazione
+            if (!localUsername) {
+                const identitySectionEl = document.getElementById('identity-section');
+                if (identitySectionEl) identitySectionEl.classList.remove('hidden');
+                if (voteSectionEl) voteSectionEl.classList.add('hidden');
+                
+                document.getElementById('btn-salva-identita').onclick = () => {
+                    const inputNomeVal = document.getElementById('input-username').value.trim();
+                    if (inputNomeVal.length >= 2) {
+                        localStorage.setItem('identita_utente_global', inputNomeVal);
+                        setTimeout(() => { location.reload(); }, 100);
+                    } else {
+                        alert("Scegli un Nickname valido! 🎮");
+                    }
+                };
+                return;
+            }
+
             avviaTimer(dataScadenza);
             
-            const nomeSalvatoPermanente = localStorage.getItem('identita_utente_global');
             const welcomeBox = document.getElementById('welcome-user-box');
-            const inputNome = document.getElementById('input-username');
-            const identitySectionEl = document.getElementById('identity-section');
-
-            if (nomeSalvatoPermanente) {
-                if (inputNome) { inputNome.value = nomeSalvatoPermanente; inputNome.classList.add('hidden'); }
-                if (welcomeBox) {
-                    welcomeBox.innerHTML = `👋 Bentornato, <span style="text-transform: capitalize;">${nomeSalvatoPermanente.toLowerCase()}</span>!`;
-                    welcomeBox.classList.remove('hidden');
-                }
+            if (welcomeBox) {
+                welcomeBox.innerHTML = `👋 Giocatore: <span style="text-transform: capitalize;">${localUsername.toLowerCase()}</span>`;
             }
 
             if (localStorage.getItem(`ha_votato_${betId}`)) {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
-                if (nomeSalvatoPermanente) {
-                    if (identitySectionEl) identitySectionEl.classList.add('hidden');
-                    if (voteSectionEl) voteSectionEl.classList.remove('hidden');
-                    generaBottoniVoto(opzioniDisponibili);
-                } else {
-                    if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-                    if (voteSectionEl) voteSectionEl.classList.add('hidden');
-                    
-                    document.getElementById('btn-salva-identita').onclick = () => {
-                        const inputNomeVal = document.getElementById('input-username').value.trim();
-                        if (inputNomeVal.length >= 2) {
-                            localStorage.setItem('identita_utente_global', inputNomeVal);
-                            setTimeout(() => { location.reload(); }, 100);
-                        } else {
-                            alert("Scegli un Nickname valido! 🎮");
-                        }
-                    };
-                }
+                if (voteSectionEl) voteSectionEl.classList.remove('hidden');
+                generaBottoniVoto(opzioniDisponibili);
             }
         }
+        
+        if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
-// ========================================================
-// JAVASCRIPT - PARTE 3 di 5: FUNZIONI OPERATIVE VOTO
-// ========================================================
+
 function avviaTimer(dataScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
@@ -213,9 +178,8 @@ function generaBottoniVoto(opzioni) {
 
 async function inviaVoto(opzioneScelta) {
     const loadingEl = document.getElementById('loading');
-    const username = localStorage.getItem('identita_utente_global') || "";
-    if (!username) { alert("Inserisci il tuo nome prima di votare!"); return; }
-    const usernameNormalizzato = username.toUpperCase().trim(); 
+    if (!localUsername) { alert("Inserisci il tuo nome prima di votare!"); return; }
+    const usernameNormalizzato = localUsername.toUpperCase().trim(); 
 
     try {
         if (loadingEl) { loadingEl.style.display = 'block'; loadingEl.innerText = "Invio voto in corso... 🛡️"; }
@@ -238,7 +202,7 @@ async function inviaVoto(opzioneScelta) {
         const votoSpecificoRef = doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno);
 
         await setDoc(votoSpecificoRef, {
-            utente: username, 
+            utente: localUsername, 
             scelta: opzioneScelta.toLowerCase().trim(),
             timestamp: new Date().toISOString(),
             saldo_token: saldoTokenAttuale 
@@ -249,7 +213,7 @@ async function inviaVoto(opzioneScelta) {
     } catch (e) { console.error(e); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 4 di 5: RENDERING RISULTATI E VERDETTI
+// JAVASCRIPT - PARTE 3A di 3: VERDETTI E DISTRIBUZIONE
 // ========================================================
 async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
@@ -310,12 +274,12 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
                 winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#E8F5E9; padding:15px; color:#2E7D32; border-radius:10px; text-align:center; font-weight:bold;">🥳 EN PLEIN DI VINCITE! Tutti prendono +1 Token.</div>`;
             } else if (tuttiPerdenti) {
                 winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#F1F5F9; padding:15px; color:#475569; border-radius:10px; text-align:center; font-weight:bold;">🤷‍♂️ NESSUN VINCITORE! Tutti Silurati (-1 Token).</div>`;
-            } else if (vincitoreEstratto) {
+            } else if (vincitoreEstratto && vincitoreEstratto !== "Nessuno") {
                 winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#FEF3C7; border:2px solid #F59E0B; padding:15px; border-radius:10px; color:#B45309; text-align:center;">👑 VINCITORE ASSOLUTO ESTRATTO:<br><span style="font-weight:bold; font-size:20px;">${vincitoreEstratto}</span></div>`;
             }
         }
 
-        if (losersList && !tuttiVincitori && perdenteEstratto) {
+        if (losersList && !tuttiVincitori && perdenteEstratto && perdenteEstratto !== "Nessuno") {
             losersList.innerHTML = `<div class="perdente-unico-box" style="background:#FEE2E2; border:2px solid #EF4444; padding:15px; border-radius:10px; color:#991B1B; text-align:center; margin-top:10px;">☠️ PERDENTE ASSOLUTO (PAGA LA PENITENZA):<br><span style="font-weight:bold; font-size:20px;">${perdenteEstratto}</span> 😭</div>`;
         }
 
@@ -370,7 +334,7 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
     } catch (e) { console.error(e); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 5 di 5: STORICO E PORTAFOGLIO NATIVO
+// JAVASCRIPT - PARTE 3B di 3: CLOUD SYNC E STORAGE
 // ========================================================
 function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
@@ -412,14 +376,42 @@ async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
     }
 }
 
-function aggiornaTokenGrafica() {
+async function aggiornaTokenGrafica() {
     const contatore = document.getElementById('token-count');
-    const box = document.querySelector('.token-balance-box');
-    if (contatore && box) {
-        const saldo = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        if (saldo > 0) { contatore.innerText = `+${saldo} (Bonus 👑)`; box.className = "token-balance-box token-positivo"; }
-        else if (saldo < 0) { contatore.innerText = `${saldo} (Malus 🌶️)`; box.className = "token-balance-box token-negativo"; }
-        else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }
+    const box = document.getElementById('token-display-wrapper');
+    if (!contatore || !box) return;
+
+    if (!localUsername) {
+        contatore.innerText = "Registra un nickname per attivare i gettoni 🪙";
+        box.className = "token-balance-box";
+        return;
+    }
+
+    try {
+        const userIdNormalizzato = localUsername.toUpperCase().trim();
+        const userGlobalRef = doc(db, "utenti_globali", userIdNormalizzato);
+        const docSnap = await getDoc(userGlobalRef);
+
+        let saldo = 0;
+        if (docSnap.exists()) {
+            saldo = docSnap.data().token_totali || 0;
+        }
+        localStorage.setItem('saldo_token_global', saldo);
+
+        if (saldo > 0) {
+            contatore.innerText = `🪙 ${localUsername.toUpperCase()}: +${saldo} Gettoni (Fortunato 👑)`;
+            box.className = "token-balance-box token-positivo";
+        } else if (saldo < 0) {
+            contatore.innerText = `🌶️ ${localUsername.toUpperCase()}: ${saldo} Gettoni (A Rischio Penitenza)`;
+            box.className = "token-balance-box token-negativo";
+        } else {
+            contatore.innerText = `🤝 ${localUsername.toUpperCase()}: 0 Gettoni (In Pari)`;
+            box.className = "token-balance-box";
+        }
+    } catch (e) {
+        console.error("Errore sinc token:", e);
+        const saldoLocale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
+        contatore.innerText = `Wallet Locale: ${saldoLocale} Token 🪙`;
     }
 }
 window.aggiornaTokenGrafica = aggiornaTokenGrafica;
@@ -440,9 +432,3 @@ function mostraStoricoSchermata() {
     container.innerHTML = html + "</ul>";
 }
 
-function mostraSchermataInizialeSenzaId() {
-    const l = document.getElementById('loading');
-    if (l) l.innerHTML = `<div style='text-align:center;padding:20px;'><h2 style='color:#1E293B;margin-bottom:10px;'>🔮 Benvenuto su GuessWhen!</h2><p style='color:#64748B;font-size:14px;'>Apri un link sfida ricevuto su WhatsApp per poter votare, accumulare gettoni e scalare la classifica del tuo gruppo di amici! 🤝</p></div>`;
-    if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-    if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-}
