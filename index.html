@@ -5,97 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔮 GuessWhen Room</title>
     <style>
-        /* 🎨 REVISIONE COMPLETA STRUTTURA FLUIDA ED EVOLUTA */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; color: #1E293B; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; max-width: 450px; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); box-sizing: border-box; }
-        h2 { margin-top: 0; color: #0F172A; text-align: center; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; color: #1E293B; margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .card { background: white; max-width: 480px; width: 100%; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); box-sizing: border-box; }
+        h2 { margin-top: 0; color: #0F172A; text-align: center; font-size: 20px; }
         .hidden { display: none !important; }
-        .status-badge { display: inline-block; background: #CBD5E1; color: #334155; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; margin-bottom: 15px; }
-        .timer-badge { display: block; text-align: center; color: #2563EB; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
-        .btn-option { display: block; width: 100%; padding: 12px; margin: 8px 0; background: #2563EB; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .status-badge { display: inline-block; background: #CBD5E1; color: #334155; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-bottom: 15px; text-transform: uppercase; }
+        .timer-badge { display: block; text-align: center; color: #2563EB; font-weight: bold; margin-bottom: 15px; font-size: 14px; background: #EFF6FF; padding: 8px; border-radius: 6px; }
+        .btn-option { display: block; width: 100%; padding: 12px; margin: 10px 0; background: #2563EB; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; box-shadow: 0 2px 4px rgba(37,99,235,0.2); }
         .btn-option:hover { background: #1D4ED8; }
-        input[type="text"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #CBD5E1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
-        
-        .token-balance-box { background: #EDF2F7; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14px; border: 1px solid #E2E8F0; }
-        .token-positivo { background: #E8F5E9; color: #2E7D32; border-color: #C8E6C9; }
-        .token-negativo { background: #FFEBEE; color: #C62828; border-color: #FFCDD2; }
-        
-        ul { padding: 0; margin: 0; }
-        .chart-bar { position: relative; background: #F1F5F9; height: 35px; border-radius: 6px; margin: 8px 0; overflow: hidden; display: flex; align-items: center; }
+        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #CBD5E1; border-radius: 6px; box-sizing: border-box; font-size: 15px; text-align: center; }
+        .token-balance-box { background: #F1F5F9; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14px; border: 1px solid #E2E8F0; }
+        .token-positivo { background: #DCFCE7; color: #15803D; border-color: #BBF7D0; }
+        .token-negativo { background: #FEE2E2; color: #B91C1C; border-color: #FCA5A5; }
+        ul { padding: 0; margin: 0; list-style: none; }
+        .chart-bar { position: relative; background: #F1F5F9; height: 38px; border-radius: 6px; margin: 10px 0; overflow: hidden; display: flex; align-items: center; border: 1px solid #E2E8F0; }
         .chart-fill { position: absolute; top: 0; left: 0; height: 100%; background: #DBEAFE; transition: width 0.5s ease; }
-        .chart-text { position: relative; z-index: 2; padding-left: 10px; font-size: 12px; font-weight: bold; color: #1E293B; }
-        #btn-usa-token { background: #F59E0B; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .chart-text { position: relative; z-index: 2; padding-left: 12px; font-size: 13px; font-weight: bold; color: #1E293B; }
+        #btn-usa-token { background: #D97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+        #consolation-list li { padding: 8px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155; }
+        #storico-container li { padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        #storico-container a { text-decoration: none; color: #2563EB; font-weight: 500; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        
-        <!-- 🪙 1. PORTAFOGLIO GETTONI LOCALI (Sempre accessibile ed immediato all'avvio) -->
+        <!-- 🪙 BOX BILANCIO TOKEN -->
         <div class="token-balance-box">
             <span id="token-count">0 (In Pari 🤝)</span>
             <br>
             <button id="btn-usa-token">🛡️ Usa 1 Token Salvavita</button>
         </div>
 
-        <!-- ⏳ 2. CONTENITORE CARICAMENTO SFIDA (Si spegne quando Firebase risponde) -->
+        <!-- ⏳ SCHERMATA CARICAMENTO -->
         <div id="loading" style="text-align: center; padding: 30px; font-weight: bold; color: #64748B;">
             Caricamento in corso... ⏳
         </div>
 
-        <!-- 🔮 3. CONTENITORE DATI CLOUD (Parte nascosto e viene attivato da app.js) -->
+        <!-- 🔮 PANNELLO PRINCIPALE CONTENUTO -->
         <div id="content" class="hidden">
-            <center><span id="challenge-title" class="status-badge">🔮 SFIDA DI GRUPPO</span></center>
-            <h2 id="question">Caricamento domanda...</h2>
+            <center><span id="challenge-title" class="status-badge">🔮 Sfida di Gruppo</span></center>
+            <h2 id="question">Caricamento in corso...</h2>
             <div id="timer-container"></div>
-            <p id="reward" style="text-align: center; font-weight: bold; color: #475569; margin-bottom: 25px;"></p>
+            <p id="reward" style="text-align: center; font-weight: bold; color: #475569; margin-bottom: 20px; font-size: 15px;"></p>
 
-            <!-- SEZIONE REGISTRAZIONE UTENTE (NICKNAME) -->
+            <!-- 👤 COMPONENTE NICKNAME -->
             
-                <input type="text" id="input-username" placeholder="Inserisci il tuo Nickname...">
-                <button id="btn-salva-identita" class="btn-option" style="background: #10B981;">Salva Nickname ed Entra</button>
+                <input type="text" id="input-username" placeholder="Scegli il tuo Nickname...">
+                <button id="btn-salva-identita" class="btn-option" style="background: #10B981; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">Registra Nome ed Entra</button>
             </div>
 
-            <!-- BOX DI VOTO ATTIVO -->
+            <!-- 🗳️ CONTENITORE PULSANTI VOTO -->
             <div id="vote-section" class="hidden">
-                <div id="welcome-user-box" style="margin-bottom: 10px; font-weight: 500; text-align: center;"></div>
-                <div id="options-container">
-                    <button id="btn-opt1" class="btn-option">Opzione 1</button>
-                    <button id="btn-opt2" class="btn-option">Opzione 2</button>
-                </div>
+                <div id="welcome-user-box" style="margin-bottom: 15px; font-weight: bold; text-align: center; color: #475569; font-size: 14px;"></div>
+                <div id="options-container"></div>
             </div>
 
-            <!-- GRAFICI E VERDETTI CONCLUSI -->
+            <!-- 📊 TABELLONE RISULTATI E GRAFICI -->
             <div id="results-section" class="hidden">
-                <div id="winners-list" style="margin-bottom: 10px;"></div>
-                <div id="losers-list" style="margin-bottom: 15px;"></div>
+                <div id="winners-list" style="margin-bottom: 12px;"></div>
+                <div id="losers-list" style="margin-bottom: 12px;"></div>
                 <div id="charts-container" style="margin-bottom: 20px;"></div>
-                <h4 style="margin-bottom: 5px; font-size: 14px; color: #1E293B;">📋 Riepilogo Risultati:</h4>
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #0F172A; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px;">📊 Scelte dei Partecipanti:</h4>
                 <ul id="consolation-list"></ul>
             </div>
 
-            <!-- RINGRAZIAMENTO DOPO IL VOTO -->
+            <!-- 🎉 RINGRAZIAMENTO DOPO IL VOTO -->
             <div id="thanks-section" class="hidden">
-                <div style="background: #E0F2FE; color: #0369A1; padding: 15px; text-align: center; border-radius: 8px; font-weight: 500; font-size: 14px;">
-                    ✅ Voto registrato con successo!
+                <div style="background: #EFF6FF; color: #1E40AF; padding: 15px; text-align: center; border-radius: 8px; font-weight: 500; font-size: 14px; border: 1px solid #BFDBFE;">
+                    🎉 Voto registrato con successo!
                     <br>
-                    <span style="font-size: 12px; color: #0C4A6E;">Resta in questa pagina e attendi il verdetto ufficiale del Master! ⏱</span>
+                    <span style="font-size: 12px; color: #1D4ED8; font-weight: bold; display:inline-block; margin-top:5px;">Attendi il verdetto ufficiale del Master sulla chat! ⏱</span>
                 </div>
             </div>
-        </div> <!-- Fine blocco #content -->
+        </div>
 
-        <!-- 📜 4. SEZIONE STORICO ULTIME SCOMMESSE (Sempre visibile per navigare subito) -->
-        <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 25px 0 15px 0;">
-        <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px; text-align: center;">📜 Storico Ultime Scommesse</h4>
+        <!-- 📜 SEZIONE STORICO -->
+        <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 30px 0 15px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 13px; text-align: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">📜 Storico Ultime Scommesse</h4>
         <div id="storico-container"></div>
-
     </div>
 
-    <!-- 🌟 FORCE RESET CACHE VERSION -->
-    <script type="module" src="app.js?v=9.0"></script>
-
+    <!-- SCRIPT DEFINITIVO SENZA CONFLITTI DI CACHE -->
+    <script type="module" src="app.js?v=30.0"></script>
 </body>
 </html>
+
 
 
 
