@@ -20,10 +20,10 @@ if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
         const parts = rawUrl.split("id=");
-        betId = (parts && parts) ? parts.substring(0, 6) : null;
+        betId = (parts && parts) ? parts[1].substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
         const parts = rawUrl.split("ID=");
-        betId = (parts && parts) ? parts.substring(0, 6) : null;
+        betId = (parts && parts) ? parts[1].substring(0, 6) : null;
     }
 }
 
@@ -34,7 +34,7 @@ const storicoWrapper = document.getElementById('storico-wrapper');
 
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 // ========================================================
-// JAVASCRIPT - PARTE 2 di 5: CONFIGURAZIONE SCHERMATE
+// JAVASCRIPT - PARTE 2 di 5: FLUSSO INTERFACCIA E LOGIN
 // ========================================================
 async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
@@ -53,8 +53,21 @@ async function inizializzaFlussoPiattaforma() {
         return;
     }
 
+    // Imposta il nome della persona loggata in alto a destra
+    const elTopUserName = document.getElementById('top-user-name');
+    if (elTopUserName) elTopUserName.innerText = `👤 ${localUsername.toUpperCase()}`;
+
     if (storicoWrapper) storicoWrapper.classList.remove('hidden');
-    mostraStoricoSchermata();
+    
+    // Configura il menu a tendina per i filtri dello storico sul sito
+    const selectFiltro = document.getElementById('select-filtro-web');
+    if (selectFiltro) {
+        selectFiltro.onchange = () => {
+            mostraStoricoSchermata(selectFiltro.value);
+        };
+    }
+
+    await mostraStoricoSchermata("TUTTE");
     await aggiornaTokenGrafica();
 
     if (!betId) {
@@ -75,7 +88,7 @@ async function inizializzaFlussoPiattaforma() {
 
 inizializzaFlussoPiattaforma();
 // ========================================================
-// JAVASCRIPT - PARTE 3 di 5: AVVIO STANZA GIOCO UNIFICATA
+// JAVASCRIPT - PARTE 3 di 5: FUNZIONI STANZA DI GIOCO
 // ========================================================
 async function eseguiStanzaGioco() {
     try {
@@ -111,19 +124,16 @@ async function eseguiStanzaGioco() {
             mostraRisultatiStanza(data);
         } else {
             avviaTimerStanza(data.timestamp_scadenza);
-            
-            // ✅ RISOLTO: Rimosso il blocco basato sul creatore! Ora l'Admin può votare come chiunque altro
             if (localStorage.getItem(`ha_votato_${betId}`)) {
                 document.getElementById('room-vote-actions').classList.add('hidden');
                 document.getElementById('room-results-panel').classList.remove('hidden');
                 mostraRisultatiStanza(data);
             } else {
                 document.getElementById('room-vote-actions').classList.remove('hidden');
-                // Carica le opzioni personalizzate inserite nell'app Android (Opzione 1 e Opzione 2)
                 generaBottoniVotoStanza(data.opzioni_disponibili || ["si", "no"]);
             }
         }
-    } catch (e) { console.error("Errore eseguiStanzaGioco:", e); }
+    } catch (e) { console.error(e); }
 }
 
 function avviaTimerStanza(timestampScadenza) {
@@ -142,14 +152,13 @@ function avviaTimerStanza(timestampScadenza) {
     setInterval(aggiorna, 1000);
 }
 // ========================================================
-// JAVASCRIPT - PARTE 4 di 5: OPERAZIONI VOTO PARTECIPANTI
+// JAVASCRIPT - PARTE 4 di 5: LOGICA VOTO E GRAFICI
 // ========================================================
 function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
     if (!container) return;
     container.innerHTML = "";
     
-    // ✅ RISOLTO: Carica le opzioni personalizzate (Opzione 1 e Opzione 2) inviate dall'app Master
     opzioni.forEach(opzione => {
         const btn = document.createElement('button');
         btn.className = "btn-main";
@@ -171,10 +180,7 @@ async function inviaVotoStanza(opzioneScelta) {
             if (docVoto.data().utente.toUpperCase().trim() === usernameNormalizzato) giaVotato = true;
         });
 
-        if (giaVotato) { 
-            alert("⚠️ Hai già espresso un voto per questa sfida!"); 
-            return; 
-        }
+        if (giaVotato) { alert("⚠️ Hai già espresso un voto per questa sfida!"); return; }
 
         const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0, 3);
         await setDoc(doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno), {
@@ -185,11 +191,9 @@ async function inviaVotoStanza(opzioneScelta) {
         
         localStorage.setItem(`ha_votato_${betId}`, opzioneScelta.toLowerCase().trim());
         window.location.reload();
-    } catch (e) { console.error("Errore salvataggio voto:", e); }
+    } catch (e) { console.error(e); }
 }
-// ========================================================
-// JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO
-// ========================================================
+
 async function mostraRisultatiStanza(dataSfida) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
@@ -263,12 +267,13 @@ async function aggiornaTokenGrafica() {
         badge.innerText = `TOKENS x${saldo}`;
     } catch (e) { console.error(e); }
 }
-
-// ✅ AGGIORNATO: Ordina lo storico privilegiando rigorosamente le sfide attive in cima
-async function mostraStoricoSchermata() {
+// ========================================================
+// JAVASCRIPT - PARTE 5 di 5: FILTRI E STORICO AVANZATO
+// ========================================================
+async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
     const container = document.getElementById('storico-container');
     if (!container) return;
-    container.innerHTML = "<p style='text-align:center;color:#94A3B8;font-size:12px;'>Caricamento storico... ⏳</p>";
+    container.innerHTML = "<p style='text-align:center;color:#94A3B8;font-size:12px;'>Aggiornamento storico... ⏳</p>";
     
     try {
         const snap = await getDocs(collection(db, "scommesse"));
@@ -277,43 +282,69 @@ async function mostraStoricoSchermata() {
         const sfideAttive = [];
         const sfideConcluse = [];
         const oraCorrente = new Date().getTime();
-        
+        const usernameNormalizzato = localUsername.toUpperCase().trim();
+
+        // Ciclo asincrono per raccogliere i dati e verificare chi ha votato
+        const promesseDiFiltro = [];
+
         snap.forEach(mDoc => {
             const m = mDoc.data();
             const isFinita = (oraCorrente >= m.timestamp_scadenza) || (m.risposta_corretta && m.risposta_corretta !== "");
             
-            const datiSfida = {
-                id: mDoc.id,
-                domanda: m.domanda,
-                isFinita: isFinita
-            };
-            
-            if (isFinita) {
-                sfideConcluse.push(datiSfida);
-            } else {
-                sfideAttive.push(datiSfida);
-            }
+            // Crea una promessa per controllare la sotto-collezione dei voti
+            const p = getDocs(collection(db, "scommesse", mDoc.id, "voti")).then(votiSnap => {
+                let haVotatoQuestaPersona = false;
+                
+                votiSnap.forEach(vDoc => {
+                    if (vDoc.data().utente.toUpperCase().trim() === usernameNormalizzato) {
+                        haVotatoQuestaPersona = true;
+                    }
+                });
+
+                // ✅ REGOLA INCLUSIONE: Inserisce nel tabellone SOLO le sfide in cui l'utente corrente ha inserito un voto
+                if (haVotatoQuestaPersona || m.creatore_nome === localUsername) {
+                    const datiSfida = {
+                        id: mDoc.id,
+                        domanda: m.domanda,
+                        isFinita: isFinita,
+                        haVotato: haVotatoQuestaPersona
+                    };
+
+                    // Applica i filtri del menu a tendina prima dell'ordinamento
+                    if (filtroSelezionato === "ATTIVE" && isFinita) return;
+                    if (filtroSelezionato === "RISOLTE" && !isFinita) return;
+
+                    if (isFinita) sfideConcluse.push(datiSfida); else sfideAttive.push(datiSfida);
+                }
+            });
+            promesseDiFiltro.push(p);
         });
+
+        // Attende che tutte le sotto-collezioni siano state scansionate
+        await Promise.all(promesseDiFiltro);
+
+        // 🌟 ORDINAMENTO: Spinge le sfide attive in cima e le concluse in fondo
+        const listaOrdinataSito = [...sfideAttive, ...sfideConcluse];
         
-        // Unisce gli array mettendo prima le attive e poi le concluse
-        const listaOrdinata = [...sfideAttive, ...sfideConcluse];
-        
-        if (listaOrdinata.length === 0) { 
-            container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato nel server Cloud.</p>"; 
+        if (listaOrdinataSito.length === 0) { 
+            container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato per il tuo profilo.</p>"; 
             return;
         }
         
         let html = '<ul style="list-style:none; padding:0; margin:0;">';
-        listaOrdinata.forEach(m => {
+        listaOrdinataSito.forEach(m => {
             const badgeLabel = m.isFinita ? 
                 `<span style="background:#E2E8F0;font-size:10px;padding:2px 6px;border-radius:4px;color:#475569;font-weight:bold;">Conclusa</span>` : 
                 `<span style="background:#E0F2FE;font-size:10px;padding:2px 6px;border-radius:4px;color:#0369A1;font-weight:bold;">Attiva</span>`;
             
-            html += `<li class="historico-list-item"><span>📌 <a href="?id=${m.id}">${m.domanda}</a></span> ${badgeLabel}</li>`;
+            // ✅ AGGIORNATO: Aggiunge la spunta verde se la persona corrente ha espresso il suo voto
+            const spuntaVoto = m.haVotato ? `<span class="voted-badge">✓ Votata</span>` : "";
+
+            html += `<li class="historico-list-item"><span>📌 ${spuntaVoto}<a href="?id=${m.id}">${m.domanda}</a></span> ${badgeLabel}</li>`;
         });
         
         container.innerHTML = html + "</ul>";
-    } catch (e) { console.error("Errore mostraStoricoSchermata:", e); }
+    } catch (e) { console.error("Errore storico web:", e); }
 }
 
 
