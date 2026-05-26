@@ -13,8 +13,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// JAVASCRIPT LATO WEB - PARTE 2 di 6: PARSING INDIRIZZO URL
-
+// Estrazione dell'ID sfida dall'indirizzo URL del browser
 const urlParams = new URLSearchParams(window.location.search);
 let betId = urlParams.get('id') || urlParams.get('ID');
 
@@ -22,7 +21,6 @@ if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
         const parts = rawUrl.split("id=");
-        // ✅ RISOLTO: Estrae la stringa corretta dall'array prima di fare il substring
         betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
         const parts = rawUrl.split("ID=");
@@ -33,11 +31,11 @@ if (!betId) {
 const loadingEl = document.getElementById('loading');
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
-// Avvio automatico dei moduli di base
+// Avvio immediato dei componenti di background
 if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
 if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
 
-// Gestione del bottone usa token salvavita
+// Gestione del pulsante salvavita per spendere 1 Token Bonus
 const btnUsaToken = document.getElementById('btn-usa-token');
 if (btnUsaToken) {
     btnUsaToken.onclick = () => {
@@ -56,13 +54,13 @@ if (btnUsaToken) {
 }
 
 if (!betId) {
-    // Schermata iniziale se non c'è ID sfida
     if (typeof mostraSchermataInizialeSenzaId === "function") mostraSchermataInizialeSenzaId();
 } else {
     betId = betId.trim();
     controllaStato();
-}
-
+}// ========================================================
+// JAVASCRIPT - PARTE 2 di 3: LOGICA DI STATO E BOTTONI VOTO
+// ========================================================
 async function controllaStato() {
     try {
         console.log("Lettura scommessa cloud ID:", betId);
@@ -92,7 +90,6 @@ async function controllaStato() {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
         
-        // Spegne il caricamento ed accende il contenitore sfida
         if (loadingEl) loadingEl.style.display = 'none';
         if (contentEl) contentEl.classList.remove('hidden');
 
@@ -118,9 +115,7 @@ async function controllaStato() {
         if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) {
-                resultsSectionEl.classList.remove('hidden');
-            }
+            if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
             avviaTimer(dataScadenza);
@@ -165,8 +160,6 @@ async function controllaStato() {
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
 
-// JAVASCRIPT LATO WEB - PARTE 3 di 5: UTILITY DI VOTO E TIMER
-
 function avviaTimer(dataScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
@@ -195,6 +188,7 @@ function generaBottoniVoto(opzioni) {
         container.appendChild(btn);
     });
 }
+
 async function inviaVoto(opzioneScelta) {
     const loadingEl = document.getElementById('loading');
     const username = localStorage.getItem('identita_utente_global') || "";
@@ -232,34 +226,9 @@ async function inviaVoto(opzioneScelta) {
         setTimeout(() => { location.reload(); }, 100);
     } catch (e) { console.error(e); }
 }
-// JAVASCRIPT LATO WEB - PARTE 4 di 5: RENDERING DELLO SCREEN VERDETTO
-function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
-    try {
-        let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-        const index = storico.findIndex(item => item.id === idScommessa);
-        
-        const dati = { 
-            id: idScommessa, 
-            domanda: domanda, 
-            risposta_corretta: rispostaCorretta || null, 
-            data_scadenza_ufficiale: expirationTimestamp || null, 
-            data_salvataggio: new Date().toISOString() 
-        };
-        
-        if (index !== -1) {
-            storico[index].risposta_corretta = rispostaCorretta || null;
-            // ✅ RISOLTO: Allineato il parametro corretto expirationTimestamp per non mandare in crash lo storico
-            if (expirationTimestamp) storico[index].data_scadenza_ufficiale = expirationTimestamp; 
-        } else {
-            storico.unshift(dati);
-        }
-        
-        if (storico.length > 20) storico = storico.slice(0, 20);
-        localStorage.setItem('storico_scommesse_global', JSON.stringify(storico));
-    } catch (e) { console.error(e); }
-}
-
-// REVISIONE CORRETTA: ENTRATA FUNZIONE MOSTRARISULTATI
+// ========================================================
+// JAVASCRIPT - PARTE 3 di 3: CALCOLO VERDETTI E STORICI
+// ========================================================
 async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
@@ -379,57 +348,20 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
     } catch (e) { console.error(e); }
 }
 
-function mostraStoricoSchermata() {
-    const storicoContainer = document.getElementById('storico-container');
-    if (!storicoContainer) return;
+function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
-        const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-        if (storico.length === 0) {
-            storicoContainer.innerHTML = `<p style="font-size:13px; color:#888; text-align:center;">Nessuna sfida registrata. 🎮</p>`;
-            return;
-        }
-        
-        let htmlStorico = '<ul style="list-style:none; padding:0; margin:0;">';
-        
-        storico.forEach(match => {
-            const haVotato = localStorage.getItem(`ha_votato_${match.id}`) ? true : false;
-            let testoVotoFinale = haVotato ? "✅ Votato" : "⏳ Da Votare";
-            
-            const oraCorrente = new Date();
-            const dataScadenzaScommessa = match.data_scadenza_ufficiale ? new Date(match.data_scadenza_ufficiale) : new Date();
-            const isSfidaConclusa = (oraCorrente >= dataScadenzaScommessa) || (match.risposta_corretta !== null && match.risposta_corretta !== undefined && match.risposta_corretta !== "");
-
-            let badge = "";
-
-            if (isSfidaConclusa) {
-                if (match.risposta_corretta) {
-                    badge = `<span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span>`;
-                } else {
-                    badge = `<span style="background:#FEE2E2;font-size:10px;padding:2px 4px;border-radius:4px;color:#991B1B;">Annullata</span>`;
-                    testoVotoFinale = "🔒 No Match";
-                }
-                if (!haVotato) testoVotoFinale = "🔒 Non Votata";
-            } else {
-                badge = `<span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>`;
-            }
-
-            htmlStorico += `
-                <li style="padding:8px 0; border-bottom:1px solid #F1F5F9; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:1; padding-right:10px;">
-                        <a href="?id=${match.id}" style="text-decoration:none; color:#1E293B; font-weight:500;">${match.domanda}</a> 
-                        <small style="color:#64748B; font-size:11px;">(${match.id}) ${badge}</small>
-                    </div>
-                    <div style="font-size:11px; font-weight:bold; color:#475569; white-space:nowrap;">
-                        ${testoVotoFinale}
-                    </div>
-                </li>`;
-        });
-        
-        storicoContainer.innerHTML = htmlStorico + '</ul>';
+        let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
+        const index = storico.findIndex(item => item.id === idScommessa);
+        const dati = { id: idScommessa, domanda: domanda, risposta_corretta: rispostaCorretta || null, data_scadenza_ufficiale: expirationTimestamp || null, data_salvataggio: new Date().toISOString() };
+        if (index !== -1) {
+            storico[index].risposta_corretta = rispostaCorretta || null;
+            if (expirationTimestamp) storico[index].data_scadenza_ufficiale = expirationTimestamp;
+        } else { storico.unshift(dati); }
+        if (storico.length > 15) storico = storico.slice(0, 15);
+        localStorage.setItem('storico_scommesse_global', JSON.stringify(storico));
     } catch (e) { console.error(e); }
 }
 
-// MEMORIZZAZIONE, GRAFICA SALTERINA E STORICI LOCALI
 async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
     if (!localStorage.getItem(`token_elaborato_${idScommessa}`)) {
         let saldoAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
@@ -446,26 +378,6 @@ async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
             try {
                 await setDoc(userGlobalRef, {
                     username: userIdNormalizzato,
-                    sfide_indovinate: valore > 0 ? increment(1) : increment(0),
-                    sfide_sbagliate: valore < 0 ? increment(1) : increment(0),
-                    token_totali: increment(valore),
-                    ultimo_aggiornamento: new Date().toISOString()
-                }, { merge: true });
-            } catch (e) { console.error("Errore classifica cloud:", e); }
-        }
-    }
-}
-
-function aggiornaTokenGrafica() {
-    const contatore = document.getElementById('token-count');
-    const box = document.querySelector('.token-balance-box');
-    if (contatore && box) {
-        const saldo = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        if (saldo > 0) { contatore.innerText = `+${saldo} (Bonus 👑)`; box.className = "token-balance-box token-positivo"; }
-        else if (saldo < 0) { contatore.innerText = `${saldo} (Malus 🌶️)`; box.className = "token-balance-box token-negativo"; }
-        else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }
-    }
-}
-window.aggiornaTokenGrafica = aggiornaTokenGrafica;
+sfide_indovinate: valore > 0 ? increment(1) : increment(0),sfide_sbagliate: valore < 0 ? increment(1) : increment(0),token_totali: increment(valore),ultimo_aggiornamento: new Date().toISOString()}, { merge: true });} catch (e) { console.error("Errore classifica cloud:", e); }}}}function aggiornaTokenGrafica() {const contatore = document.getElementById('token-count');const box = document.querySelector('.token-balance-box');if (contatore && box) {const saldo = parseInt(localStorage.getItem('saldo_token_global')) || 0;if (saldo > 0) { contatore.innerText = +${saldo} (Bonus 👑); box.className = "token-balance-box token-positivo"; }else if (saldo < 0) { contatore.innerText = ${saldo} (Malus 🌶️); box.className = "token-balance-box token-negativo"; }else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }}}window.aggiornaTokenGrafica = aggiornaTokenGrafica;function mostraStoricoSchermata() {const container = document.getElementById('storico-container');if (!container) return;const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];if (storico.length === 0) { container.innerHTML = "Nessun match registrato."; return; }let html = '';storico.forEach(m => {const ora = new Date();const scade = m.data_scadenza_ufficiale ? new Date(m.data_scadenza_ufficiale) : new Date();const isFinita = (ora >= scade) || m.risposta_corretta;const b = isFinita ? <span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span> : <span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>;html += <li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>;});container.innerHTML = html + "";}function mostraSchermataInizialeSenzaId() {const l = document.getElementById('loading');if (l) l.innerHTML = <div style='text-align:center;padding:20px;'><h2 style='color:#1E293B;margin-bottom:10px;'>🔮 Benvenuto su GuessWhen!</h2><p style='color:#64748B;font-size:14px;'>Apri un link sfida ricevuto su WhatsApp per poter votare, accumulare gettoni e scalare la classifica del tuo gruppo di amici! 🤝</p></div>;if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();}
 
 
