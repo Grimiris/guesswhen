@@ -445,22 +445,6 @@ function mostraStoricoSchermata() {
 // ========================================================
 // MEMORIZZAZIONE, GRAFICA SALTERINA E STORICI LOCALI
 // ========================================================
-// ========================================================
-// JAVASCRIPT LATO WEB - PARTE 6 di 6: STORICO E PORTAFOGLIO
-// ========================================================
-function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
-    try {
-        let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-        const index = storico.findIndex(item => item.id === idScommessa);
-        const dati = { id: idScommessa, domanda: domanda, risposta_corretta: rispostaCorretta || null, data_scadenza_ufficiale: expirationTimestamp || null, data_salvataggio: new Date().toISOString() };
-        if (index !== -1) {
-            storico[index].risposta_corretta = rispostaCorretta || null;
-            if (expirationTimestamp) storico[index].data_scadenza_ufficiale = expirationTimestamp;
-        } else { storico.unshift(dati); }
-        if (storico.length > 15) storico = storico.slice(0, 15);
-        localStorage.setItem('storico_scommesse_global', JSON.stringify(storico));
-    } catch (e) { console.error(e); }
-}
 
 async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
     if (!localStorage.getItem(`token_elaborato_${idScommessa}`)) {
