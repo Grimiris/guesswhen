@@ -3,32 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GuessWhen Room</title>
+    <title>GuessWhen</title>
     <style>
-        /* 🎨 DESIGN SYSTEM UNIFICATO COMPATTO MOBILE */
+        /* 🎨 DESIGN SYSTEM COMPATTO CON ALLINEAMENTO CENTRATO */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #FAF9F6; color: #000000; margin: 0; padding: 0; display: flex; justify-content: center; }
         .phone-container { max-width: 450px; width: 100%; min-height: 100vh; background: #FAF9F6; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; }
         
-        /* Navbar Superiore delle immagini */
         .header-navbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #E2E8F0; margin-bottom: 20px; }
         .logo-text { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
         .logo-text span { color: #FF4500; }
         .token-badge-top { background: #E2F8F8; color: #00838F; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; border: 1px solid #B2EBF2; }
 
-        h2 { font-size: 32px; font-weight: bold; margin: 0 0 20px 0; line-height: 1.1; text-transform: uppercase; }
+        /* ✅ MODIFICATO: Titolo principale centrato */
+        h2 { font-size: 32px; font-weight: bold; margin: 0 0 20px 0; line-height: 1.1; text-transform: uppercase; text-align: center; }
         .hidden { display: none !important; }
         
-        /* Schede bianche arrotondate dello stile grafico */
         .sub-card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); box-sizing: border-box; margin-bottom: 20px; position: relative; }
-        .label-input { font-size: 11px; font-weight: bold; color: #94A3B8; letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; }
+        .label-input { font-size: 11px; font-weight: bold; color: #94A3B8; letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; text-align: center; }
         input[type="text"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 16px; box-sizing: border-box; font-size: 15px; text-align: center; }
         
-        /* Pulsanti e moduli di interazione */
         .btn-main { display: block; width: 100%; padding: 16px; background: #FF4500; color: white; border: none; border-radius: 18px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; text-align: center; text-decoration: none; box-sizing: border-box; }
         .btn-black { background: #111111; margin-bottom: 10px; }
-        .btn-admin-choice { background: #111111; color: white; flex: 1; padding: 14px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
 
-        /* Badge ed etichette identificative di stato */
         .status-dot { font-size: 11px; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
         .dot-attiva { color: #0284C7; }
         .dot-chiusa { color: #00E676; }
@@ -37,7 +33,6 @@
 
         .bar-result-field { background: #F1F5F9; padding: 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; font-size: 15px; }
         
-        /* Liste dello storico posizionato in fondo */
         .historico-list-item { padding: 12px 0; border-bottom: 1px solid #E2E8F0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
         .historico-list-item a { text-decoration: none; color: #2563EB; font-weight: 600; }
     </style>
@@ -52,12 +47,12 @@
             <div class="token-badge-top" id="top-token-counter">TOKENS x0</div>
         </div>
 
-        <!-- INDICAZIONE CARICAMENTO SERVER -->
+        <!-- SCHERMATA CARICAMENTO -->
         <div id="screen-loading" style="text-align:center; padding:40px; font-weight:bold; color:#64748B;">
             Connessione al server... ⏳
         </div>
 
-        <!-- 🔑 SCHERMATA LOGIN NICKNAME (Isolata all'avvio) -->
+        <!-- 🔑 SCHERMATA LOGIN NICKNAME -->
         <div id="screen-login" class="hidden" style="width:100%;">
             <h2>Registrazione<br>Profilo</h2>
             <div class="sub-card">
@@ -67,48 +62,50 @@
             </div>
         </div>
 
-        <!-- 🔮 SCHERMATA STANZA DI VOTO / ESITI AMICI (Si attiva solo se c'è ?id= nell'URL) -->
+        <!-- 🔮 SCHERMATA STANZA DI VOTO AMICI (Senza moduli di creazione) -->
         <div id="screen-play-room" class="hidden">
             <div class="sub-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <div id="room-status-badge" class="status-dot">• ATTIVA</div>
                     <div id="room-id-tag" class="id-tag">#id</div>
                 </div>
-                <h2 id="room-question" style="font-size:26px; text-align:left; text-transform:none; margin-bottom:15px;">Dati sfida...</h2>
-                <div id="timer-container" style="font-weight:bold; color:#2563EB; margin-bottom:12px; font-size:14px;"></div>
-                <div style="font-size:14px; font-weight:500;">
+                <!-- ✅ MODIFICATO: Testo della scommessa centrato -->
+                <h2 id="room-question" style="font-size:26px; text-align:center; text-transform:none; margin-bottom:15px;">Dati sfida...</h2>
+                <div id="timer-container" style="text-align:center; font-weight:bold; color:#2563EB; margin-bottom:12px; font-size:14px;"></div>
+                <div style="text-align:center; font-size:14px; font-weight:500;">
                     <span id="room-reward" style="color:#D97706;">🎁 Premio in palio: Caricamento...</span>
                 </div>
             </div>
 
-            <!-- GRAFICI E BARRE PERCENTUALI -->
+            <!-- GRAFICI PERCENTUALI -->
             <div id="room-results-panel" class="sub-card hidden">
-                <div id="room-percent-status" style="font-size:11px; font-weight:bold; color:#0284C7; text-transform:uppercase; margin-bottom:12px;">• Risultati Finali</div>
+                <div id="room-percent-status" style="font-size:11px; font-weight:bold; color:#0284C7; text-transform:uppercase; margin-bottom:12px; text-align:center;">• Risultati Finali</div>
                 <div id="charts-wrapper"></div>
             </div>
 
-            <!-- PULSANTI DI VOTO DINAMICI PER LE OPZIONI PERSONALIZZATE DEL MASTER -->
+            <!-- PULSANTI DI VOTO DINAMICI (Opzione 1 e Opzione 2 dal database) -->
             <div id="room-vote-actions" class="hidden" style="margin-bottom:20px;">
                 <div id="options-container"></div>
             </div>
 
-            <!-- REGISTRO DELLE ANAGRAFICHE DEI VOTANTI IN FONDO -->
+            <!-- REGISTRO PARTECIPANTI IN FONDO -->
             <div id="room-participants-card" class="sub-card hidden">
-                <h4 style="margin:0 0 10px 0; font-size:14px; text-transform:uppercase; color:#475569;">📊 Registro Partecipanti:</h4>
+                <h4 style="margin:0 0 10px 0; font-size:14px; text-transform:uppercase; color:#475569; text-align:center;">📊 Registro Partecipanti:</h4>
                 <ul id="consolation-list" style="padding:0; margin:0;"></ul>
             </div>
         </div>
 
-        <!-- 📜 SEZIONE STORICO RECENTI IN FONDO AL SITO (Sempre visibile se loggato) -->
+        <!-- 📜 SEZIONE STORICO RECENTI ORDINATA (Le attive saliranno sempre in cima) -->
         <div id="storico-wrapper" class="sub-card hidden" style="margin-top:auto;">
-            <h4 style="margin:0 0 12px 0; color:#475569; font-size:14px; font-weight:bold; text-transform:uppercase;">📜 Le Tue Scommesse Recenti</h4>
+            <h4 style="margin:0 0 12px 0; color:#475569; font-size:14px; font-weight:bold; text-transform:uppercase; text-align:center;">📜 Le Tue Scommesse Recenti</h4>
             <div id="storico-container"></div>
         </div>
 
     </div>
 
-    <!-- 🌟 PARAMETRO DI RESET RIGIDO DELLA CACHE MEMORY IMPOSTATO A V=950.0 -->
-    <script type="module" src="app.js?v=950.0"></script>
+    <!-- 🌟 RESET CACHE PROTOCOLLO V=1100.0 -->
+    <script type="module" src="app.js?v=1100.0"></script>
 
 </body>
 </html>
+
