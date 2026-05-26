@@ -20,10 +20,10 @@ if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
         const parts = rawUrl.split("id=");
-        betId = (parts && parts[1]) ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts) ? parts.substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
         const parts = rawUrl.split("ID=");
-        betId = (parts && parts[1]) ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts) ? parts.substring(0, 6) : null;
     }
 }
 
@@ -33,8 +33,9 @@ const screenPlayRoom = document.getElementById('screen-play-room');
 const storicoWrapper = document.getElementById('storico-wrapper');
 
 let localUsername = localStorage.getItem('identita_utente_global') || "";
-
-// Gestore navigazione iniziale basato sull'identità dell'utente
+// ========================================================
+// JAVASCRIPT - PARTE 2 di 5: CONFIGURAZIONE SCHERMATE
+// ========================================================
 async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
         if (screenLoading) screenLoading.style.display = 'none';
@@ -74,7 +75,7 @@ async function inizializzaFlussoPiattaforma() {
 
 inizializzaFlussoPiattaforma();
 // ========================================================
-// JAVASCRIPT - PARTE 2 di 3: FLUSSO STANZA DI GIOCO E TIMER
+// JAVASCRIPT - PARTE 3 di 5: AVVIO STANZA GIOCO UNIFICATA
 // ========================================================
 async function eseguiStanzaGioco() {
     try {
@@ -110,26 +111,19 @@ async function eseguiStanzaGioco() {
             mostraRisultatiStanza(data);
         } else {
             avviaTimerStanza(data.timestamp_scadenza);
+            
+            // ✅ RISOLTO: Rimosso il blocco basato sul creatore! Ora l'Admin può votare come chiunque altro
             if (localStorage.getItem(`ha_votato_${betId}`)) {
                 document.getElementById('room-vote-actions').classList.add('hidden');
                 document.getElementById('room-results-panel').classList.remove('hidden');
                 mostraRisultatiStanza(data);
             } else {
                 document.getElementById('room-vote-actions').classList.remove('hidden');
-                // ✅ SBLOCCATO: Carica le opzioni personalizzate create dal Master nell'App
+                // Carica le opzioni personalizzate inserite nell'app Android (Opzione 1 e Opzione 2)
                 generaBottoniVotoStanza(data.opzioni_disponibili || ["si", "no"]);
             }
         }
-
-        // Pannello Admin visibile solo al creatore della sfida
-        if (data.creatore_nome === localUsername && !haEsito && !data.annullata) {
-            const adminPanel = document.getElementById('room-admin-panel');
-            if (adminPanel) {
-                adminPanel.classList.remove('hidden');
-                generaControlliAdmin(data);
-            }
-        }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Errore eseguiStanzaGioco:", e); }
 }
 
 function avviaTimerStanza(timestampScadenza) {
@@ -148,14 +142,14 @@ function avviaTimerStanza(timestampScadenza) {
     setInterval(aggiorna, 1000);
 }
 // ========================================================
-// JAVASCRIPT - PARTE 3 di 3: OPERAZIONI VOTO E ADMIN ENGINE
+// JAVASCRIPT - PARTE 4 di 5: OPERAZIONI VOTO PARTECIPANTI
 // ========================================================
 function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
     if (!container) return;
     container.innerHTML = "";
     
-    // Genera i pulsanti dinamici basati sulle opzioni scelte dal Master
+    // ✅ RISOLTO: Carica le opzioni personalizzate (Opzione 1 e Opzione 2) inviate dall'app Master
     opzioni.forEach(opzione => {
         const btn = document.createElement('button');
         btn.className = "btn-main";
@@ -193,85 +187,9 @@ async function inviaVotoStanza(opzioneScelta) {
         window.location.reload();
     } catch (e) { console.error("Errore salvataggio voto:", e); }
 }
-
-function generaControlliAdmin(dataScommessa) {
-    const layoutChoices = document.getElementById('admin-choices-layout');
-    if (!layoutChoices) return;
-    layoutChoices.innerHTML = "";
-
-    getDocs(collection(db, "scommesse", betId, "voti")).then(snap => {
-        const txtVoti = document.getElementById('admin-vote-count-text');
-        if (txtVoti) txtVoti.innerText = `${snap.size} voti`;
-    });
-
-    dataScommessa.opzioni_disponibili.forEach(opzione => {
-        const btnAdmin = document.createElement('button');
-        btnAdmin.className = "btn-admin-choice";
-        btnAdmin.innerText = opzione.toUpperCase();
-        btnAdmin.onclick = () => decretaRisultatoUfficialeCloud(opzione, dataScommessa.opzioni_disponibili);
-        layoutChoices.appendChild(btnAdmin);
-    });
-}
-
 // ========================================================
-// JAVASCRIPT - PARTE 5 di 5: ALGORITMO PONDERATO E STORICO
+// JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO
 // ========================================================
-async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
-    const rispCorrettaNorm = opzioneVincente.toLowerCase().trim().replace("ì", "i");
-    if (!confirm(`Vuoi impostare "${opzioneVincente.toUpperCase()}" come risultato definitivo?`)) return;
-
-    try {
-        const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
-        if (votiSnap.size <= 1) {
-            await setDoc(doc(db, "scommesse", betId), { annullata: true, chiusa_anticipo: true }, { merge: true });
-            alert("Sfida annullata: minimo 2 partecipanti richiesti.");
-            window.location.reload(); return;
-        }
-
-        const utentiSnap = await getDocs(collection(db, "utenti_globali"));
-        const mappaGettoniCloud = {};
-        utentiSnap.forEach(uDoc => { mappaGettoniCloud[uDoc.id.toUpperCase().trim()] = uDoc.data().token_totali || 0; });
-
-        const vincitoriPossibili = [];
-        const perdentiPossibili = [];
-
-        votiSnap.forEach(vDoc => {
-            const v = vDoc.data();
-            const sceltaUtenteNorm = v.scelta.toLowerCase().trim().replace("ì", "i");
-            if (sceltaUtenteNorm === rispCorrettaNorm) vincitoriPossibili.push(v.utente); else perdentiPossibili.push(v.utente);
-        });
-
-        let vincitoreAssoluto = "Nessuno";
-        if (vincitoriPossibili.length > 0) {
-            const urnaVincitori = [];
-            vincitoriPossibili.forEach(v => {
-                const gettoni = mappaGettoniCloud[v.toUpperCase().trim()] || 0;
-                const biglietti = gettoni > 0 ? (1 + gettoni) : 1;
-                for (let i = 0; i < biglietti; i++) urnaVincitori.push(v);
-            });
-            vincitoreAssoluto = urnaVincitori[Math.floor(Math.random() * urnaVincitori.length)];
-        }
-
-        let perdenteAssoluto = "Nessuno";
-        if (perdentiPossibili.length > 0) {
-            const urnaPerdenti = [];
-            perdentiPossibili.forEach(p => {
-                const gettoni = mappaGettoniCloud[p.toUpperCase().trim()] || 0;
-                const biglietti = gettoni < 0 ? (1 + Math.abs(gettoni)) : 1;
-                for (let i = 0; i < biglietti; i++) urnaPerdenti.push(p);
-            });
-            perdenteAssoluto = urnaPerdenti[Math.floor(Math.random() * urnaPerdenti.length)];
-        }
-
-        await setDoc(doc(db, "scommesse", betId), {
-            risposta_corretta: rispCorrettaNorm, vincitore_estratto: vincitoreAssoluto, perdente_estratto: perdenteAssoluto, chiusa_anticipo: true
-        }, { merge: true });
-
-        alert(`🏆 Verdetto registrato!\n👑 Vincitore: ${vincitoreAssoluto}\n☠️ Perdente: ${perdenteAssoluto}`);
-        window.location.reload();
-    } catch (e) { console.error(e); }
-}
-
 async function mostraRisultatiStanza(dataSfida) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
@@ -346,6 +264,7 @@ async function aggiornaTokenGrafica() {
     } catch (e) { console.error(e); }
 }
 
+// ✅ AGGIORNATO: Ordina lo storico privilegiando rigorosamente le sfide attive in cima
 async function mostraStoricoSchermata() {
     const container = document.getElementById('storico-container');
     if (!container) return;
@@ -354,20 +273,47 @@ async function mostraStoricoSchermata() {
     try {
         const snap = await getDocs(collection(db, "scommesse"));
         container.innerHTML = "";
-        let count = 0;
-        let html = '<ul style="list-style:none; padding:0; margin:0;">';
+        
+        const sfideAttive = [];
+        const sfideConcluse = [];
+        const oraCorrente = new Date().getTime();
         
         snap.forEach(mDoc => {
             const m = mDoc.data();
-            count++;
-            const ora = new Date().getTime();
-            const isFinita = (ora >= m.timestamp_scadenza) || m.risposta_corretta !== "";
-            const b = isFinita ? `<span style="background:#E2E8F0;font-size:10px;padding:2px 6px;border-radius:4px;color:#475569;font-weight:bold;">Conclusa</span>` : `<span style="background:#E0F2FE;font-size:10px;padding:2px 6px;border-radius:4px;color:#0369A1;font-weight:bold;">Attiva</span>`;
-            html += `<li class="historico-list-item"><span>📌 <a href="?id=${mDoc.id}">${m.domanda}</a></span> ${b}</li>`;
+            const isFinita = (oraCorrente >= m.timestamp_scadenza) || (m.risposta_corretta && m.risposta_corretta !== "");
+            
+            const datiSfida = {
+                id: mDoc.id,
+                domanda: m.domanda,
+                isFinita: isFinita
+            };
+            
+            if (isFinita) {
+                sfideConcluse.push(datiSfida);
+            } else {
+                sfideAttive.push(datiSfida);
+            }
         });
         
-        if (count === 0) { container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato nel server.</p>"; }
-        else { container.innerHTML = html + "</ul>"; }
-    } catch (e) { console.error(e); }
+        // Unisce gli array mettendo prima le attive e poi le concluse
+        const listaOrdinata = [...sfideAttive, ...sfideConcluse];
+        
+        if (listaOrdinata.length === 0) { 
+            container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato nel server Cloud.</p>"; 
+            return;
+        }
+        
+        let html = '<ul style="list-style:none; padding:0; margin:0;">';
+        listaOrdinata.forEach(m => {
+            const badgeLabel = m.isFinita ? 
+                `<span style="background:#E2E8F0;font-size:10px;padding:2px 6px;border-radius:4px;color:#475569;font-weight:bold;">Conclusa</span>` : 
+                `<span style="background:#E0F2FE;font-size:10px;padding:2px 6px;border-radius:4px;color:#0369A1;font-weight:bold;">Attiva</span>`;
+            
+            html += `<li class="historico-list-item"><span>📌 <a href="?id=${m.id}">${m.domanda}</a></span> ${badgeLabel}</li>`;
+        });
+        
+        container.innerHTML = html + "</ul>";
+    } catch (e) { console.error("Errore mostraStoricoSchermata:", e); }
 }
+
 
