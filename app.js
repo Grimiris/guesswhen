@@ -468,18 +468,4 @@ function aggiornaTokenGrafica() {
 }
 window.aggiornaTokenGrafica = aggiornaTokenGrafica;
 
-function mostraStoricoSchermata() {
-    const container = document.getElementById('storico-container');
-    if (!container) return;
-    const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-    if (storico.length === 0) { container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato.</p>"; return; }
-    let html = '<ul style="list-style:none; padding:0; margin:0;">';
-    storico.forEach(m => {
-        const ora = new Date();
-        const scade = m.data_scadenza_ufficiale ? new Date(m.data_scadenza_ufficiale) : new Date();
-        const isFinita = (ora >= scade) || m.risposta_corretta;
-        const b = isFinita ? `<span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span>` : `<span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>`;
-        html += `<li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>`;
-    });
-    container.innerHTML = html + "</ul>";
-}
+
