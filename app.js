@@ -35,8 +35,10 @@ if (!betId) {
     if (loadingEl) {
         loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter entrare nel tavolo di gioco con i tuoi amici! 🤝</p></div>`;
     }
-    if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-    if (localUsername && typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
+    if (localUsername) {
+        if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+        if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
+    }
 } else {
     betId = betId.trim();
     controllaStato();
@@ -55,17 +57,24 @@ async function controllaStato() {
         const resultsSectionEl = document.getElementById('results-section');
         const thanksSectionEl = document.getElementById('thanks-section');
         const identitySectionEl = document.getElementById('identity-section');
+        const tokenBox = document.getElementById('token-display-wrapper');
+        const storicoBox = document.getElementById('storico-container');
 
-        // 1. Se l'utente non ha un Nickname, mostra SOLO il modulo di login e blocca il resto
+        // 🌟 SCHERMATA ISOLATA: Se l'utente non ha un Nickname, mostra SOLO il login e nasconde TUTTO il resto (Card, Gettoni e Storico)
         if (!localUsername) {
             if (loadingEl) loadingEl.style.display = 'none';
             if (contentEl) contentEl.classList.remove('hidden');
             if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-            if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) { resultsSectionEl.classList.add('hidden'); }
             
-            const txtContatore = document.getElementById('token-count');
-            if (txtContatore) txtContatore.innerText = "Registra un nickname per attivare i gettoni 🪙";
+            // Nasconde tutto il resto per creare la schermata di login pulita
+            if (challengeTitleEl) challengeTitleEl.style.display = 'none';
+            if (questionEl) questionEl.style.display = 'none';
+            if (rewardEl) { rewardEl.style.display = 'none'; }
+            if (tokenBox) tokenBox.style.display = 'none';
+            if (storicoBox) storicoBox.style.display = 'none';
+            
+            const hrList = document.querySelectorAll('hr, h4');
+            hrList.forEach(el => el.style.display = 'none');
 
             document.getElementById('btn-salva-identita').onclick = () => {
                 const inputNomeVal = document.getElementById('input-username').value.trim();
@@ -77,11 +86,13 @@ async function controllaStato() {
                     alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
                 }
             };
-            return; 
+            return; // Blocca l'esecuzione qui, non carica la sfida finché non c'è il nome
         }
 
-        // 2. Se il Nickname esiste, nasconde il modulo di login per sicurezza prima di procedere
+        // 🌟 RIPRISTINO SCHERMATA DI GIOCO: Se il nome esiste, mostra la sfida e lo storico
         if (identitySectionEl) identitySectionEl.classList.add('hidden');
+        if (tokenBox) tokenBox.style.display = 'block';
+        if (storicoBox) storicoBox.style.display = 'block';
 
         console.log("Lettura scommessa cloud ID:", betId);
         const docRef = doc(db, "scommesse", betId);
@@ -147,7 +158,6 @@ async function controllaStato() {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
-                // ✅ CORRETTO: Assicura che la sezione voto si accenda e quella del login si spenga
                 if (identitySectionEl) identitySectionEl.classList.add('hidden');
                 if (voteSectionEl) voteSectionEl.classList.remove('hidden');
                 generaBottoniVoto(opzioniDisponibili);
