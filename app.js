@@ -1,4 +1,4 @@
-// 1. IMPORT MODULI CORRETTI CON WWW (Risolto errore CORS di gstatic)
+/ 1. IMPORT MODULI CORRETTI CON WWW (Risolto errore CORS di gstatic)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, getDoc, collection, addDoc, getDocs, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 const firebaseConfig = {
