@@ -30,6 +30,23 @@ if (!betId) {
     }
 }
 
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const urlParams = new URLSearchParams(window.location.search);
+let betId = urlParams.get('id') || urlParams.get('ID');
+
+if (!betId) {
+    const rawUrl = window.location.href;
+    if (rawUrl.includes("id=")) {
+        const parts = rawUrl.split("id=");
+        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+    } else if (rawUrl.includes("ID=")) {
+        const parts = rawUrl.split("ID=");
+        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+    }
+}
+
 const loadingEl = document.getElementById('loading');
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
@@ -60,7 +77,7 @@ if (!betId) {
     controllaStato();
 }
 // ========================================================
-// JAVASCRIPT - PARTE 3 di 6: ENGINE CORE DI STATO CLOUD
+// JAVASCRIPT - PARTE 2 di 5: CORE ENGINE DI STATO CLOUD
 // ========================================================
 async function controllaStato() {
     try {
@@ -163,7 +180,7 @@ async function controllaStato() {
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 4 di 6: FUNZIONI OPERATIVE VOTO
+// JAVASCRIPT - PARTE 3 di 5: FUNZIONI OPERATIVE VOTO
 // ========================================================
 function avviaTimer(dataScadenza) {
     const container = document.getElementById('timer-container');
@@ -232,7 +249,7 @@ async function inviaVoto(opzioneScelta) {
     } catch (e) { console.error(e); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 5 di 6: RENDERING RISULTATI
+// JAVASCRIPT - PARTE 4 di 5: RENDERING RISULTATI E VERDETTI
 // ========================================================
 async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
@@ -353,7 +370,7 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
     } catch (e) { console.error(e); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 6 di 6: STORICO E PORTAFOGLIO
+// JAVASCRIPT - PARTE 5 di 5: STORICO E PORTAFOGLIO NATIVO
 // ========================================================
 function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
