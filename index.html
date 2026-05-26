@@ -5,18 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GuessWhen Room</title>
     <style>
-        /* 🎨 DESIGN SYSTEM UNIFICATO COMPATTO MOBILE */
+        /* 🎨 DESIGN SYSTEM PSICOLOGICO AVANZATO */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #FAF9F6; color: #000000; margin: 0; padding: 0; display: flex; justify-content: center; }
         .phone-container { max-width: 450px; width: 100%; min-height: 100vh; background: #FAF9F6; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; }
         
-        /* Navbar Superiore */
         .header-navbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #E2E8F0; margin-bottom: 20px; }
         .logo-text { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
         .logo-text span { color: #FF4500; }
-        
-        .profile-container { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-        .token-badge-top { background: #E2F8F8; color: #00838F; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; border: 1px solid #B2EBF2; }
-        .user-name-top { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+        .user-name-top { font-size: 12px; color: #1E293B; font-weight: 700; text-transform: uppercase; background: #E2E8F0; padding: 4px 10px; border-radius: 10px; }
 
         h2 { font-size: 32px; font-weight: bold; margin: 0 0 20px 0; line-height: 1.1; text-transform: uppercase; text-align: center; }
         .hidden { display: none !important; }
@@ -25,8 +21,17 @@
         .label-input { font-size: 11px; font-weight: bold; color: #94A3B8; letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; text-align: center; }
         input[type="text"], select { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 16px; box-sizing: border-box; font-size: 15px; text-align: center; }
         
-        .btn-main { display: block; width: 100%; padding: 16px; background: #FF4500; color: white; border: none; border-radius: 18px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; text-align: center; text-decoration: none; box-sizing: border-box; }
+        /* 🔥 BOTTONE NEON DOPAMINERGICO PER IL VOTO IMMEDIATO */
+        .btn-main { display: block; width: 100%; padding: 16px; background: #FF4500; color: white; border: none; border-radius: 18px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; text-align: center; text-decoration: none; box-sizing: border-box; box-shadow: 0 4px 14px rgba(255, 69, 0, 0.3); }
         
+        /* 💎 SCATOLA DELLA VITTORIA PERSONALIZZATA */
+        .bacheca-personal-box { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 24px; padding: 20px; margin-bottom: 20px; }
+        .bacheca-token-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .bacheca-badge { background: #DCFCE7; color: #16A34A; font-weight: bold; padding: 6px 14px; border-radius: 14px; font-size: 13px; }
+        .bacheca-stats { font-size: 12px; color: #166534; font-weight: 600; margin-bottom: 10px; }
+        .bacheca-list { padding: 0; margin: 0; list-style: none; font-size: 12px; color: #14532D; }
+        .bacheca-list li { padding: 4px 0; border-top: 1px dashed #C6F6D5; }
+
         .status-dot { font-size: 11px; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
         .dot-attiva { color: #0284C7; }
         .dot-chiusa { color: #00E676; }
@@ -35,34 +40,32 @@
 
         .bar-result-field { background: #F1F5F9; padding: 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; font-size: 15px; }
         
-        /* Sistema Stelle Interactive */
         .stars-rating-wrapper { text-align: center; margin: 20px 0 10px 0; padding-top: 15px; border-top: 1px dashed #E2E8F0; }
-        .star-clickable { font-size: 28px; cursor: pointer; color: #CBD5E1; transition: color 0.2s ease; margin: 0 4px; display: inline-block; }
+        .star-clickable { font-size: 28px; cursor: pointer; color: #CBD5E1; margin: 0 4px; display: inline-block; }
         .star-clickable.active { color: #FFD700; }
         
         .historico-list-item { padding: 14px 0; border-bottom: 1px solid #E2E8F0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
         .historico-list-item a { text-decoration: none; color: #2563EB; font-weight: 600; }
-        .voted-badge { background: #DCFCE7; color: #15803D; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 6px; margin-right: 8px; display: inline-block; }
+        /* 🛡️ BADGE COMPLETAMENTO */
+        .voted-badge { background: #DBEAFE; color: #1E40AF; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 6px; margin-right: 8px; display: inline-block; }
     </style>
 </head>
 <body>
 
     <div class="phone-container">
         
-        <!-- NAVBAR CON UTENTE IN ALTO -->
+        <!-- TESTATA PULITA -->
         <div class="header-navbar">
             <div class="logo-text">GUESS<span>WHEN</span></div>
-            <div class="profile-container">
-                <div class="token-badge-top" id="top-token-counter">TOKENS x0</div>
-                <div class="user-name-top" id="top-user-name">👤 OSPITE</div>
-            </div>
+            <div class="user-name-top" id="top-user-name">👤 OSPITE</div>
         </div>
 
+        <!-- CARICAMENTO BACKGROUND -->
         <div id="screen-loading" style="text-align:center; padding:40px; font-weight:bold; color:#64748B;">
             Connessione al server... ⏳
         </div>
 
-        <!-- KEYMEMBER REGISTRAZIONE -->
+        <!-- 🔑 SCHERMATA LOGIN NICKNAME -->
         <div id="screen-login" class="hidden" style="width:100%;">
             <h2>Registrazione<br>Profilo</h2>
             <div class="sub-card">
@@ -72,7 +75,19 @@
             </div>
         </div>
 
-        <!-- STANZA DI GIOCO ATTIVA -->
+        <!-- 💎 SCATOLA DELLA VITTORIA PERSONALE (Sempre visibile sopra la stanza voto) -->
+        <div id="bacheca-personal-panel" class="bacheca-personal-box hidden">
+            <div class="bacheca-token-row">
+                <span style="font-size:14px; font-weight:bold; color:#14532D;">🏆 Il Tuo Palmarès</span>
+                <span class="bacheca-badge" id="bacheca-token-count">GETTONI x0</span>
+            </div>
+            <div class="bacheca-stats" id="bacheca-rendimento-text">Caricamento statistiche... 🔄</div>
+            <ul class="bacheca-list" id="bacheca-premi-list">
+                <!-- I premi vinti o le penitenze da pagare appaiono qui -->
+            </ul>
+        </div>
+
+        <!-- 🔮 STANZA DI VOTO AMICI (Completamente ripulita dai gettoni) -->
         <div id="screen-play-room" class="hidden">
             <div class="sub-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -82,11 +97,12 @@
                 <h2 id="room-question" style="font-size:26px; text-align:center; text-transform:none; margin-bottom:15px;">Caricamento domanda...</h2>
                 <div id="timer-container" style="text-align:center; font-weight:bold; color:#2563EB; margin-bottom:12px; font-size:14px;"></div>
                 <div style="text-align:center; font-size:14px; font-weight:500;">
-                    <span id="room-reward" style="color:#D97706;">🎁 Premio in palio: Caricamento...</span>
+                    <!-- 🎁 IL PREMIO ORA GUIDA L'OCCHIO AL CENTRO -->
+                    <span id="room-reward" style="color:#FF4500; font-size:16px; font-weight:bold;">🎁 PREMIO IN PALIO: Caricamento...</span>
                 </div>
             </div>
 
-            <!-- GRAFICI E COMPONENTE DELLE STELLE POST-CHIUSURA -->
+            <!-- RISULTATI E STELLE -->
             <div id="room-results-panel" class="sub-card hidden">
                 <div id="room-percent-status" style="font-size:11px; font-weight:bold; color:#0284C7; text-transform:uppercase; margin-bottom:12px; text-align:center;">• Risultati Finali</div>
                 <div id="charts-wrapper"></div>
@@ -100,7 +116,7 @@
                         <span class="star-clickable" data-value="4">★</span>
                         <span class="star-clickable" data-value="5">★</span>
                     </div>
-                    <div id="text-conferma-stella" style="font-size:11px; color:#16A34A; font-weight:bold;" class="hidden">Grazie per la valutazione! Ricalcolo in corso... ✨</div>
+                    <div id="text-conferma-stella" style="font-size:11px; color:#16A34A; font-weight:bold;" class="hidden">Valutazione salvata! ✨</div>
                 </div>
             </div>
 
@@ -114,14 +130,14 @@
             </div>
         </div>
 
-        <!-- SEZIONE STORICO RECENTI IN FONDO -->
+        <!-- 📜 SEZIONE STORICO RECENTI CON FILTRI PSICOLOGICI -->
         <div id="storico-wrapper" class="sub-card hidden" style="margin-top:auto;">
-            <h4 style="margin:0 0 12px 0; color:#475569; font-size:14px; font-weight:bold; text-transform:uppercase; text-align:center;">📜 Le Tue Scommesse Recenti</h4>
+            <h4 style="margin:0 0 12px 0; color:#475569; font-size:14px; font-weight:bold; text-transform:uppercase; text-align:center;">📋 Registro Generale Room</h4>
             
             <select id="select-filtro-web" style="margin-bottom:15px; padding:10px; border-radius:10px; font-weight:600;">
-                <option value="TUTTE">MOSTRA: TUTTE LE SFIDE</option>
-                <option value="ATTIVE">MOSTRA: SOLO ATTIVE</option>
-                <option value="RISOLTE">MOSTRA: SOLO RISOLTE</option>
+                <option value="TUTTE">🔮 TUTTO IL PALINSESTO</option>
+                <option value="ATTIVE">🔥 SFIDE IN CORSO (VOTA ORA)</option>
+                <option value="RISOLTE">🏆 VERDETTI E SENTENZE</option>
             </select>
             
             <div id="storico-container"></div>
@@ -129,8 +145,8 @@
 
     </div>
 
-    <!-- 🌟 RESET CACHE PROTOCOLLO COMPILATORE PORTATO A V=1300.0 -->
-    <script type="module" src="app.js?v=1300.0"></script>
+    <!-- 🌟 RESET CACHE PROTOCOLLO V=2100.0 -->
+    <script type="module" src="app.js?v=2100.0"></script>
 
 </body>
 </html>
