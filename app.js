@@ -67,14 +67,13 @@ async function controllaStato() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            if (loadingEl) loadingEl.innerText = `Scommessa (${betId}) non trovata nel database.`;
+            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovata nel database.`;
             return;
         }
 
         const data = docSnap.data();
         const opzioniDisponibili = data.opzioni_disponibili || ["si", "no"]; 
         
-        // ✅ AGGIORNATO: Riferimento al titolo della scheda per differenziare i Quiz dalle Scommesse
         const challengeTitleEl = document.getElementById('challenge-title');
         const questionEl = document.getElementById('question');
         const rewardEl = document.getElementById('reward');
@@ -89,19 +88,19 @@ async function controllaStato() {
         }
         if (questionEl) questionEl.innerText = data.domanda || "Nuova scommessa";
         
-        // ✅ CORRETTO: Cambia l'etichetta del premio se si tratta di un Quiz
         if (rewardEl) {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
         
-        if (loadingEl) loadingEl.classList.add('hidden');
+        // ✅ CORRETTO: Nasconde il caricamento e accende la scommessa in modo pulito e sicuro
+        if (loadingEl) loadingEl.style.display = 'none';
         if (contentEl) contentEl.classList.remove('hidden');
 
         if (data.annullata === true) {
-            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA DAL MASTER ❌</span>`;
+            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA ❌</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
             if (resultsSectionEl) {
-                resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">L'organizzatore ha rimosso questa scommessa. Nessun gettone è stato decurtato dal tuo bilancio!</p>`;
+                resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata (voti insufficienti o rimossa dall'organizzatore). Nessun gettone modificato!</p>`;
                 resultsSectionEl.classList.remove('hidden');
             }
             return; 
@@ -121,7 +120,6 @@ async function controllaStato() {
         const haRispostaUfficiale = data.risposta_corretta !== undefined && data.risposta_corretta !== null && data.risposta_corretta !== "";
 
         if (typeof salvaInStoricoLocale === "function") {
-            // Passiamo sia il timestamp che la data come fallback
             salvaInStoricoLocale(betId, data.domanda, data.risposta_corretta, data.timestamp_scadenza || data.data_scadenza);
         }
 
@@ -129,13 +127,17 @@ async function controllaStato() {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
             if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
+            
+            // ✅ CORRETTO: Passiamo il 5° parametro (data.annullata) per allinearsi alla funzione mostraRisultati
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
             if (typeof avviaTimer === "function") avviaTimer(dataScadenza);
             
             const nomeSalvatoPermanente = localStorage.getItem('identita_utente_global');
             const welcomeBox = document.getElementById('welcome-user-box');
-            const inputNome = document.getElementById('username');
+            
+            // ✅ ALLINEATO: Cerca 'input-username' che corrisponde al nuovo ID del file index.html
+            const inputNome = document.getElementById('input-username');
 
             if (nomeSalvatoPermanente) {
                 if (inputNome) {
@@ -157,9 +159,10 @@ async function controllaStato() {
             }
         }
     } catch (errore) {
-        console.error("Errore di rendering o lettura Firebase:", errore);
+        console.error("Errore critico dentro controllaStato:", errore);
     }
 }
+
 
 // ========================================================
 // JAVASCRIPT LATO WEB - PARTE 3 di 5: UTILITY DI VOTO E TIMER
