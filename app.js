@@ -30,70 +30,65 @@ if (!betId) {
 const loadingEl = document.getElementById('loading');
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
-// Avvio differenziato: esegue i moduli solo dopo aver verificato l'identità
-if (!betId) {
-    if (loadingEl) {
-        loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter entrare nel tavolo di gioco con i tuoi amici! 🤝</p></div>`;
+// ✅ GESTORE ACCESSO ISOLATO E BLINDATO
+function inizializzaAccessoUtente() {
+    const identitySectionEl = document.getElementById('identity-section');
+    const contentEl = document.getElementById('content');
+    const tokenBox = document.getElementById('token-display-wrapper');
+    const storicoBox = document.getElementById('storico-container');
+    const btnSalva = document.getElementById('btn-salva-identita');
+
+    if (!localUsername) {
+        // Nasconde tutta la grafica del gioco all'avvio
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (contentEl) contentEl.classList.remove('hidden');
+        if (identitySectionEl) identitySectionEl.classList.remove('hidden');
+        if (tokenBox) tokenBox.style.display = 'none';
+        if (storicoBox) storicoBox.style.display = 'none';
+        
+        const hrList = document.querySelectorAll('hr, h4');
+        hrList.forEach(el => el.style.display = 'none');
+
+        if (btnSalva) {
+            btnSalva.onclick = function() {
+                const inputNomeVal = document.getElementById('input-username').value.trim();
+                if (inputNomeVal.length >= 2) {
+                    localStorage.setItem('identita_utente_global', inputNomeVal);
+                    localStorage.setItem('ultimo_utente_voto', inputNomeVal);
+                    window.location.reload();
+                } else {
+                    alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
+                }
+            };
+        }
+    } else {
+        // L'utente ha il nickname: avvia il gioco normalmente
+        if (identitySectionEl) identitySectionEl.classList.add('hidden');
+        if (tokenBox) tokenBox.style.display = 'block';
+        if (storicoBox) storicoBox.style.display = 'block';
+
+        if (!betId) {
+            if (loadingEl) {
+                loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter entrare nel tavolo di gioco con i tuoi amici! 🤝</p></div>`;
+            }
+            if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+            if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
+        } else {
+            if (betId) {
+                betId = betId.trim();
+                controllaStato();
+            }
+        }
     }
-    if (localUsername) {
-        if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-        if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-    }
-} else {
-    betId = betId.trim();
-    controllaStato();
 }
+
+// Esegue l'inizializzazione appena lo script viene letto
+inizializzaAccessoUtente();
 // ========================================================
 // JAVASCRIPT - PARTE 2 di 3: LOGICA DI STATO E BOTTONI VOTO
 // ========================================================
 async function controllaStato() {
     try {
-        const challengeTitleEl = document.getElementById('challenge-title');
-        const questionEl = document.getElementById('question');
-        const rewardEl = document.getElementById('reward');
-        const contentEl = document.getElementById('content');
-        const timerContainerEl = document.getElementById('timer-container');
-        const voteSectionEl = document.getElementById('vote-section');
-        const resultsSectionEl = document.getElementById('results-section');
-        const thanksSectionEl = document.getElementById('thanks-section');
-        const identitySectionEl = document.getElementById('identity-section');
-        const tokenBox = document.getElementById('token-display-wrapper');
-        const storicoBox = document.getElementById('storico-container');
-
-        // 🌟 SCHERMATA ISOLATA: Se l'utente non ha un Nickname, mostra SOLO il login e nasconde TUTTO il resto (Card, Gettoni e Storico)
-        if (!localUsername) {
-            if (loadingEl) loadingEl.style.display = 'none';
-            if (contentEl) contentEl.classList.remove('hidden');
-            if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-            
-            // Nasconde tutto il resto per creare la schermata di login pulita
-            if (challengeTitleEl) challengeTitleEl.style.display = 'none';
-            if (questionEl) questionEl.style.display = 'none';
-            if (rewardEl) { rewardEl.style.display = 'none'; }
-            if (tokenBox) tokenBox.style.display = 'none';
-            if (storicoBox) storicoBox.style.display = 'none';
-            
-            const hrList = document.querySelectorAll('hr, h4');
-            hrList.forEach(el => el.style.display = 'none');
-
-            document.getElementById('btn-salva-identita').onclick = () => {
-                const inputNomeVal = document.getElementById('input-username').value.trim();
-                if (inputNomeVal.length >= 2) {
-                    localStorage.setItem('identita_utente_global', inputNomeVal);
-                    localStorage.setItem('ultimo_utente_voto', inputNomeVal);
-                    setTimeout(() => { location.reload(); }, 100);
-                } else {
-                    alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
-                }
-            };
-            return; // Blocca l'esecuzione qui, non carica la sfida finché non c'è il nome
-        }
-
-        // 🌟 RIPRISTINO SCHERMATA DI GIOCO: Se il nome esiste, mostra la sfida e lo storico
-        if (identitySectionEl) identitySectionEl.classList.add('hidden');
-        if (tokenBox) tokenBox.style.display = 'block';
-        if (storicoBox) storicoBox.style.display = 'block';
-
         console.log("Lettura scommessa cloud ID:", betId);
         const docRef = doc(db, "scommesse", betId);
         const docSnap = await getDoc(docRef);
@@ -105,6 +100,15 @@ async function controllaStato() {
 
         const data = docSnap.data();
         const opzioniDisponibili = data.opzioni_disponibili || ["si", "no"]; 
+        
+        const challengeTitleEl = document.getElementById('challenge-title');
+        const questionEl = document.getElementById('question');
+        const rewardEl = document.getElementById('reward');
+        const contentEl = document.getElementById('content');
+        const timerContainerEl = document.getElementById('timer-container');
+        const voteSectionEl = document.getElementById('vote-section');
+        const resultsSectionEl = document.getElementById('results-section');
+        const thanksSectionEl = document.getElementById('thanks-section');
 
         if (challengeTitleEl) challengeTitleEl.innerText = data.is_quiz ? "🧠 QUIZ GLOBALE" : "🔮 SFIDA DI GRUPPO";
         if (questionEl) questionEl.innerText = data.domanda || "Nuova scommessa";
@@ -158,7 +162,6 @@ async function controllaStato() {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
-                if (identitySectionEl) identitySectionEl.classList.add('hidden');
                 if (voteSectionEl) voteSectionEl.classList.remove('hidden');
                 generaBottoniVoto(opzioniDisponibili);
             }
