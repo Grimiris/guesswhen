@@ -20,10 +20,10 @@ if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
         const parts = rawUrl.split("id=");
-        betId = (parts && parts) ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts) ? parts.substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
         const parts = rawUrl.split("ID=");
-        betId = (parts && parts) ? parts[1].substring(0, 6) : null;
+        betId = (parts && parts) ? parts.substring(0, 6) : null;
     }
 }
 
@@ -31,6 +31,7 @@ const screenLoading = document.getElementById('screen-loading');
 const screenLogin = document.getElementById('screen-login');
 const screenPlayRoom = document.getElementById('screen-play-room');
 const storicoWrapper = document.getElementById('storico-wrapper');
+
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 // ========================================================
 // JAVASCRIPT - PARTE 2 di 5: CONFIGURAZIONE SCHERMATE E FILTRI
@@ -52,7 +53,7 @@ async function inizializzaFlussoPiattaforma() {
         return;
     }
 
-    // ✅ RIPRISTINATO: Nome del votante stampato in alto a destra
+    // Imposta il nome della persona loggata in alto a destra
     const elTopUserName = document.getElementById('top-user-name');
     if (elTopUserName) elTopUserName.innerText = `👤 ${localUsername.toUpperCase()}`;
 
@@ -123,8 +124,6 @@ async function eseguiStanzaGioco() {
             mostraRisultatiStanza(data);
         } else {
             avviaTimerStanza(data.timestamp_scadenza);
-            
-            // ✅ RISOLTO: Rimosso il vecchio blocco! Ora l'Admin vota regolarmente come chiunque altro
             if (localStorage.getItem(`ha_votato_${betId}`)) {
                 document.getElementById('room-vote-actions').classList.add('hidden');
                 document.getElementById('room-results-panel').classList.remove('hidden');
@@ -195,12 +194,10 @@ async function inviaVotoStanza(opzioneScelta) {
     } catch (e) { console.error(e); }
 }
 
-// ✅ NUOVO: Abilita i listener click sulle stelle per inviare il rating al database Cloud
 function inizializzaValutazioneStelle() {
     const wrapperStelle = document.getElementById('wrapper-valutazione-stelle');
     if (!wrapperStelle) return;
 
-    // Se l'utente ha già recensito questa sfida specifica, tiene il blocco nascosto
     if (localStorage.getItem(`recensito_stelle_${betId}`)) {
         wrapperStelle.classList.add('hidden');
         return;
@@ -213,7 +210,6 @@ function inizializzaValutazioneStelle() {
         stella.onclick = async () => {
             const valoreStelle = parseInt(stella.getAttribute('data-value')) || 5;
 
-            // Illumina visivamente le stelle cliccate
             stelleElements.forEach(s => {
                 const sVal = parseInt(s.getAttribute('data-value')) || 0;
                 if (sVal <= valoreStelle) s.classList.add('active'); else s.classList.remove('active');
@@ -273,9 +269,8 @@ async function mostraRisultatiStanza(dataSfida) {
         const pStatus = document.getElementById('room-percent-status');
         if (dataSfida.risposta_corretta) {
             pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ ESTRATTO: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
-            // ✅ NUOVO: Accende il sistema delle stelle a fine scommessa per valutare l'Admin proprietario
             if (!dataSfida.annullata) inizializzaValutazioneStelle();
-        } else { pStatus.innerText = `• RISULTATI FINALES (${totaleVoti} VOTI)`; }
+        } else { pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`; }
 
         dataSfida.opzioni_disponibili.forEach(opz => {
             const count = conteggi[opz.toLowerCase().trim()] || 0;
@@ -316,7 +311,6 @@ async function aggiornaTokenGrafica() {
     } catch (e) { console.error(e); }
 }
 
-// ✅ ORDINAMENTO E SPUNTA VERDE: Mostra anche i match creati da terzi in cui ho votato, tenendo le attive in cima
 async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
     const container = document.getElementById('storico-container');
     if (!container) return;
@@ -343,7 +337,6 @@ async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
                     if (vDoc.data().utente.toUpperCase().trim() === usernameNormalizzato) haVotatoQuestaPersona = true;
                 });
 
-                // ✅ REGOLA INCLUSIONE: Inserisce le sfide create da me OPPURE quelle degli altri in cui compare un mio voto
                 if (haVotatoQuestaPersona || m.creatore_nome === localUsername) {
                     const datiSfida = { id: mDoc.id, domanda: m.domanda, isFinita: isFinita, haVotato: haVotatoQuestaPersona };
 
@@ -370,7 +363,6 @@ async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
                 `<span style="background:#E2E8F0;font-size:10px;padding:2px 6px;border-radius:4px;color:#475569;font-weight:bold;">Conclusa</span>` : 
                 `<span style="background:#E0F2FE;font-size:10px;padding:2px 6px;border-radius:4px;color:#0369A1;font-weight:bold;">Attiva</span>`;
             
-            // ✅ AGGIORNATO: Stampa il badge "✓ Votata" verde se ho partecipato alla scommessa
             const spuntaVoto = m.haVotato ? `<span class="voted-badge">✓ Votata</span>` : "";
 
             html += `<li class="historico-list-item"><span>📌 ${spuntaVoto}<a href="?id=${m.id}">${m.domanda}</a></span> ${badgeLabel}</li>`;
@@ -379,4 +371,3 @@ async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
         container.innerHTML = html + "</ul>";
     } catch (e) { console.error(e); }
 }
-
