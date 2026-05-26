@@ -26,9 +26,12 @@ let betId = urlParams.get('id') || urlParams.get('ID');
 if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
-        betId = rawUrl.split("id=")[1] ? rawUrl.split("id=")[1].substring(0, 6) : null;
+        const parts = rawUrl.split("id=");
+        // ✅ RISOLTO: Estrae la stringa corretta dall'array prima di fare il substring
+        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
-        betId = rawUrl.split("ID=")[1] ? rawUrl.split("ID=")[1].substring(0, 6) : null;
+        const parts = rawUrl.split("ID=");
+        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
     }
 }
 
@@ -58,7 +61,8 @@ if (btnUsaToken) {
 }
 
 if (!betId) {
-    if (loadingEl) loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter votare e scalare la classifica del gruppo! 🤝</p></div>`;
+    // Schermata iniziale se non c'è ID sfida
+    if (typeof mostraSchermataInizialeSenzaId === "function") mostraSchermataInizialeSenzaId();
 } else {
     betId = betId.trim();
     controllaStato();
