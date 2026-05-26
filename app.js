@@ -17,25 +17,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// ========================================================
+// JAVASCRIPT LATO WEB - PARTE 2 di 6: PARSING INDIRIZZO URL
+// ========================================================
 const urlParams = new URLSearchParams(window.location.search);
 let betId = urlParams.get('id') || urlParams.get('ID');
 
 if (!betId) {
     const rawUrl = window.location.href;
     if (rawUrl.includes("id=")) {
-        const parts = rawUrl.split("id=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+        betId = rawUrl.split("id=")[1] ? rawUrl.split("id=")[1].substring(0, 6) : null;
     } else if (rawUrl.includes("ID=")) {
-        const parts = rawUrl.split("ID=");
-        betId = parts && parts[1] ? parts[1].substring(0, 6) : null;
+        betId = rawUrl.split("ID=")[1] ? rawUrl.split("ID=")[1].substring(0, 6) : null;
     }
 }
 
 const loadingEl = document.getElementById('loading');
+let localUsername = localStorage.getItem('identita_utente_global') || "";
 
+// Avvio automatico dei moduli di base
 if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
 if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
 
+// Gestione del bottone usa token salvavita
 const btnUsaToken = document.getElementById('btn-usa-token');
 if (btnUsaToken) {
     btnUsaToken.onclick = () => {
@@ -54,7 +58,7 @@ if (btnUsaToken) {
 }
 
 if (!betId) {
-    if (loadingEl) loadingEl.innerText = "ID scommessa mancante nell'URL. Riapri il link da WhatsApp.";
+    if (loadingEl) loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter votare e scalare la classifica del gruppo! 🤝</p></div>`;
 } else {
     betId = betId.trim();
     controllaStato();
@@ -67,7 +71,7 @@ async function controllaStato() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovata nel database.`;
+            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato nel database server.`;
             return;
         }
 
@@ -83,16 +87,13 @@ async function controllaStato() {
         const resultsSectionEl = document.getElementById('results-section');
         const thanksSectionEl = document.getElementById('thanks-section');
 
-        if (challengeTitleEl) {
-            challengeTitleEl.innerText = data.is_quiz ? "🧠 QUIZ GLOBALE" : "🔮 SFIDA DI GRUPPO";
-        }
+        if (challengeTitleEl) challengeTitleEl.innerText = data.is_quiz ? "🧠 QUIZ GLOBALE" : "🔮 SFIDA DI GRUPPO";
         if (questionEl) questionEl.innerText = data.domanda || "Nuova scommessa";
-        
         if (rewardEl) {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
         
-        // ✅ CORRETTO: Nasconde il caricamento e accende la scommessa in modo pulito e sicuro
+        // Spegne il caricamento ed accende il contenitore sfida
         if (loadingEl) loadingEl.style.display = 'none';
         if (contentEl) contentEl.classList.remove('hidden');
 
@@ -100,21 +101,13 @@ async function controllaStato() {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA ❌</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
             if (resultsSectionEl) {
-                resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata (voti insufficienti o rimossa dall'organizzatore). Nessun gettone modificato!</p>`;
+                resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata. Nessun gettone modificato!</p>`;
                 resultsSectionEl.classList.remove('hidden');
             }
             return; 
         }
 
-        let dataScadenza;
-        if (data.timestamp_scadenza) {
-            dataScadenza = new Date(data.timestamp_scadenza);
-        } else if (data.data_scadenza) {
-            dataScadenza = new Date(data.data_scadenza); 
-        } else {
-            dataScadenza = new Date(new Date().getTime() + 2 * 60 * 60 * 1000);
-        }
-        
+        let dataScadenza = data.timestamp_scadenza ? new Date(data.timestamp_scadenza) : (data.data_scadenza ? new Date(data.data_scadenza) : new Date());
         const oraCorrente = new Date();
         const isChiusaManualmente = data.chiusa_anticipo === true;
         const haRispostaUfficiale = data.risposta_corretta !== undefined && data.risposta_corretta !== null && data.risposta_corretta !== "";
@@ -126,27 +119,22 @@ async function controllaStato() {
         if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
-            
-            // ✅ CORRETTO: Passiamo il 5° parametro (data.annullata) per allinearsi alla funzione mostraRisultati
+            if (resultsSectionEl) {
+                resultsSectionEl.classList.remove('hidden');
+            }
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
-            if (typeof avviaTimer === "function") avviaTimer(dataScadenza);
+            avviaTimer(dataScadenza);
             
             const nomeSalvatoPermanente = localStorage.getItem('identita_utente_global');
             const welcomeBox = document.getElementById('welcome-user-box');
-            
-            // ✅ ALLINEATO: Cerca 'input-username' che corrisponde al nuovo ID del file index.html
             const inputNome = document.getElementById('input-username');
+            const identitySectionEl = document.getElementById('identity-section');
 
             if (nomeSalvatoPermanente) {
-                if (inputNome) {
-                    inputNome.value = nomeSalvatoPermanente;
-                    inputNome.classList.add('hidden'); 
-                }
+                if (inputNome) { inputNome.value = nomeSalvatoPermanente; inputNome.classList.add('hidden'); }
                 if (welcomeBox) {
                     welcomeBox.innerHTML = `👋 Bentornato, <span style="text-transform: capitalize;">${nomeSalvatoPermanente.toLowerCase()}</span>!`;
-                    welcomeBox.className = "welcome-badge"; 
                     welcomeBox.classList.remove('hidden');
                 }
             }
@@ -155,12 +143,27 @@ async function controllaStato() {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
-                if (typeof generaBottoniVoto === "function") generaBottoniVoto(opzioniDisponibili);
+                if (nomeSalvatoPermanente) {
+                    if (identitySectionEl) identitySectionEl.classList.add('hidden');
+                    if (voteSectionEl) voteSectionEl.classList.remove('hidden');
+                    generaBottoniVoto(opzioniDisponibili);
+                } else {
+                    if (identitySectionEl) identitySectionEl.classList.remove('hidden');
+                    if (voteSectionEl) voteSectionEl.classList.add('hidden');
+                    
+                    document.getElementById('btn-salva-identita').onclick = () => {
+                        const inputNomeVal = document.getElementById('input-username').value.trim();
+                        if (inputNomeVal.length >= 2) {
+                            localStorage.setItem('identita_utente_global', inputNomeVal);
+                            setTimeout(() => { location.reload(); }, 100);
+                        } else {
+                            alert("Scegli un Nickname valido! 🎮");
+                        }
+                    };
+                }
             }
         }
-    } catch (errore) {
-        console.error("Errore critico dentro controllaStato:", errore);
-    }
+    } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
 
 
@@ -175,9 +178,9 @@ function avviaTimer(dataScadenza) {
         const diff = dataScadenza - ora;
         if (diff <= 0) { location.reload(); return; }
         const ore = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const minuti = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const secondi = Math.floor((diff % (1000 * 60)) / 1000);
-        container.innerHTML = `<span class="timer-badge">⏳ Scade tra: ${ore}h ${minutes}m ${secondi}s</span>`;
+        container.innerHTML = `<span class="timer-badge">⏳ Scade tra: ${ore}h ${minuti}m ${secondi}s</span>`;
     }
     aggiorna();
     setInterval(aggiorna, 1000);
@@ -197,17 +200,13 @@ function generaBottoniVoto(opzioni) {
 }
 
 async function inviaVoto(opzioneScelta) {
-    const usernameInput = document.getElementById('username');
     const loadingEl = document.getElementById('loading');
-    const voteSectionEl = document.getElementById('vote-section');
-    const thanksSectionEl = document.getElementById('thanks-section');
-    
-    const username = usernameInput ? usernameInput.value.trim() : "";
+    const username = localStorage.getItem('identita_utente_global') || "";
     if (!username) { alert("Inserisci il tuo nome prima di votare!"); return; }
     const usernameNormalizzato = username.toUpperCase().trim(); 
 
     try {
-        if (loadingEl) { loadingEl.classList.remove('hidden'); loadingEl.innerText = "Verifica identità... 🛡️"; }
+        if (loadingEl) { loadingEl.style.display = 'block'; loadingEl.innerText = "Invio voto in corso... 🛡️"; }
 
         const votiRef = collection(db, "scommesse", betId, "voti");
         const snapshotVoti = await getDocs(votiRef);
@@ -217,42 +216,25 @@ async function inviaVoto(opzioneScelta) {
         });
 
         if (giaVotato) {
-            if (loadingEl) loadingEl.classList.add('hidden');
-            alert(`⚠️ Errore: Il nome "${username}" ha già espresso un voto per questa sfida!`);
+            if (loadingEl) loadingEl.style.display = 'none';
+            alert(`⚠️ Hai già espresso un voto per questa sfida!`);
             return; 
         }
 
         const saldoTokenAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        
-        // ✅ STRUTTURA ATOMICA UNIFORMATA: Generiamo un ID voto univoco indistruttibile
         const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0,3);
-        
-        // Usiamo setDoc invece di addDoc sfruttando doc importato globalmente all'inizio
-        await setDoc(doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno), {
+        const votoSpecificoRef = doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno);
+
+        await setDoc(votoSpecificoRef, {
             utente: username, 
             scelta: opzioneScelta.toLowerCase().trim(),
-            timestamp_invio: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
             saldo_token: saldoTokenAttuale 
         });
-
-        if (voteSectionEl) voteSectionEl.classList.add('hidden');
-        if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
-        if (loadingEl) loadingEl.classList.add('hidden');
         
-        localStorage.setItem('identita_utente_global', username);
-        localStorage.setItem('ultimo_utente_voto', username);
-        
-        // ✅ CORRETTO: Ora memorizza la REALE scelta effettuata (SÌ o NO), fondamentale per l'assegnazione gettoni
         localStorage.setItem(`ha_votato_${betId}`, opzioneScelta.toLowerCase().trim());
-        
-        // ✅ INTEGRATO: Micro-ritardo salvavita di 100ms per chiudere i listener asincroni delle estensioni prima del reload
-        setTimeout(() => {
-            location.reload();
-        }, 100);
-    } catch (e) { 
-        console.error(e); 
-        alert("Errore durante l'invio del voto: " + e.message);
-    }
+        setTimeout(() => { location.reload(); }, 100);
+    } catch (e) { console.error(e); }
 }
 // ========================================================
 // JAVASCRIPT LATO WEB - PARTE 4 di 5: RENDERING DELLO SCREEN VERDETTO
@@ -287,10 +269,9 @@ function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expiration
 // ========================================================
 // REVISIONE CORRETTA: ENTRATA FUNZIONE MOSTRARISULTATI
 // ========================================================
-async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto) {
+async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
-        
         const winnersList = document.getElementById('winners-list');
         const losersList = document.getElementById('losers-list');
         const chartsContainer = document.getElementById('charts-container');
@@ -304,15 +285,14 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
 
         const haEsitoUfficiale = rispostaCorretta !== undefined && rispostaCorretta !== null && rispostaCorretta !== "";
         
-        // Controllo di sicurezza: se c'è 1 solo partecipante a tempo scaduto, annulla la sfida
-        if (haEsitoUfficiale && votiSnap.size <= 1) {
+        if (isAnnullataCloud || (haEsitoUfficiale && votiSnap.size <= 1)) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA ❌</span>`;
             if (winnersList) winnersList.innerHTML = "<p style='font-size:14px; color:#64748B; text-align:center; font-weight:500;'>Sfida annullata automaticamente: è richiesto un minimo di 2 partecipanti per convalidare il match.</p>";
             return; 
         }
 
         if (!rispostaCorretta) {
-            if (winnersList) winnersList.innerHTML = "<p style='font-size:14px; color:#888; text-align:center;'>⏱ Match Terminato. In attesa che il Master inserisca l'esito ufficiale dall'App Android...</p>";
+            if (winnersList) winnersList.innerHTML = "<p style='font-size:14px; color:#888; text-align:center;'>⏱ Match Terminato. In attesa del risultato ufficiale dall'organizzatore...</p>";
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEF3C7; color:#92400E; padding:5px 10px; border-radius:5px; font-weight:bold;">🔒 VOTAZIONI CHIUSE</span>`;
             return;
         }
@@ -357,58 +337,52 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
             losersList.innerHTML = `<div class="perdente-unico-box" style="background:#FEE2E2; border:2px solid #EF4444; padding:15px; border-radius:10px; color:#991B1B; text-align:center; margin-top:10px;">☠️ PERDENTE ASSOLUTO (PAGA LA PENITENZA):<br><span style="font-weight:bold; font-size:20px;">${perdenteEstratto}</span> 😭</div>`;
         }
 
-// ========================================================
-// JAVASCRIPT LATO WEB - PARTE 5 di 5: GRAFICA INTERATTIVA E TOKEN BALANCING
-// ========================================================
-             const localUsername = document.getElementById('username')?.value.trim() || localStorage.getItem('identita_utente_global') || localStorage.getItem('ultimo_utente_voto') || "";
-
         votiDataArray.forEach(v => {
             const li = document.createElement('li');
-            li.style = "padding:6px; border-bottom:1px solid #E2E8F0; list-style:none; font-size:13px;";
+            li.style = "padding:8px; border-bottom:1px solid #F1F5F9; list-style:none; font-size:13px; color:#334155;";
             const sceltaUtenteNorm = v.scelta.toLowerCase().trim().replace("ì", "i");
 
             if (sceltaUtenteNorm === rispCorrettaNorm) {
                 if (tuttiVincitori) {
-                    li.innerText = `🪙 ${v.utente} (Prende +1 Token Bonus)`;
-                    if (consolationList) consolationList.appendChild(li);
-                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, "En plein! +1 Token. 🪙");
+                    li.innerHTML = `🔹 <b>${v.utente}</b>: Indovinato! <span style="color:#16A34A;font-weight:bold;">+1 Token</span>`;
+                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, null);
                 } else {
                     const isVincitoreAssoluto = (v.utente === vincitoreEstratto);
-                    li.innerText = isVincitoreAssoluto ? `👑 ${v.utente} (VINCITORE ASSOLUTO)` : `🔹 ${v.utente} (Prende +1 Token)`;
-                    if (consolationList) consolationList.appendChild(li);
-                    
-                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, "Hai indovinato! +1 Token. 🪙");
+                    li.innerHTML = isVincitoreAssoluto ? `👑 <b>${v.utente}</b>: <span style="color:#D97706;font-weight:bold;">VINCITORE ASSOLUTO</span>` : `🔹 <b>${v.utente}</b>: Indovinato! <span style="color:#16A34A;font-weight:bold;">+1 Token</span>`;
+                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, "Hai indovinato la scommessa! +1 Token. 🪙");
                 }
             } else {
                 if (tuttiPerdenti) {
-                    li.innerText = `🌶️ ${v.utente} (Prende -1 Token Malus)`;
-                    if (consolationList) consolationList.appendChild(li);
-                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, "Tutti silurati! -1 Token. 🌶️");
+                    li.innerHTML = `🌶️ <b>${v.utente}</b>: Sbagliato! <span style="color:#DC2626;font-weight:bold;">-1 Token</span>`;
+                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, null);
                 } else {
                     const isPerdenteAssoluto = (v.utente === perdenteEstratto);
-                    li.innerText = isPerdenteAssoluto ? `☠️ ${v.utente} (PERDENTE ASSOLUTO - PENITENZA)` : `🌶️ ${v.utente} (Prende -1 Token - Penitenza minore)`;
-                    if (consolationList) consolationList.appendChild(li);
-                    
-                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, "Hai sbagliato risposta! -1 Token. 🌶️");
+                    li.innerHTML = isPerdenteAssoluto ? `☠️ <b>${v.utente}</b>: <span style="color:#DC2626;font-weight:bold;">PERDENTE ASSOLUTO (Penitenza)</span>` : `🌶️ <b>${v.utente}</b>: Sbagliato! <span style="color:#EF4444;">-1 Token (Penitenza minore)</span>`;
+                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, "Hai sbagliato la risposta! -1 Token. 🌶️");
                 }
             }
+            if (consolationList) consolationList.appendChild(li);
         });
 
-        if (chartsContainer) {
+        if (chartsContainer && totaleVoti > 0) {
+            chartsContainer.innerHTML = `<h4 style="margin-bottom:10px; font-size:14px; color:#1E293B;">Riepilogo Percentuali Voti:</h4>`;
             opzioni.forEach(opzione => {
                 const chiaveOpzione = opzione.toLowerCase().trim();
                 const count = conteggi[chiaveOpzione] || 0;
-                const pct = totaleVoti > 0 ? Math.round((count / totaleVoti) * 100) : 0;
-                const bar = document.createElement('div');
-                bar.className = "chart-bar";
+                const pct = Math.round((count / totaleVoti) * 100);
                 const isCorrect = opzione.toLowerCase().trim().replace("ì", "i") === rispCorrettaNorm;
                 const fillStyle = isCorrect ? 'background-color: #C8E6C9;' : '';
                 
-                bar.innerHTML = `
-                    <div class="chart-fill" style="width: ${pct}%; ${fillStyle}"></div> 
-                    <div class="chart-text" style="text-transform: uppercase;">${opzione}: ${pct}% (${count} voti) ${isCorrect ? '✅' : ''}</div>
-                `;
-                chartsContainer.appendChild(bar);
+                chartsContainer.innerHTML += `
+                    <div style="margin-bottom:8px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+                            <span style="font-weight:500; text-transform:uppercase;">${opzione}</span>
+                            <span style="color:#64748B;">${count} voti (${pct}%)</span>
+                        </div>
+                        <div style="background:#E2E8F0; width:100%; height:8px; border-radius:4px; overflow:hidden;">
+                            <div style="background:#2563EB; width:${pct}%; ${fillStyle} height:100%;"></div>
+                        </div>
+                    </div>`;
             });
         }
     } catch (e) { console.error(e); }
@@ -467,37 +441,25 @@ function mostraStoricoSchermata() {
 // ========================================================
 // MEMORIZZAZIONE, GRAFICA SALTERINA E STORICI LOCALI
 // ========================================================
+// ========================================================
+// JAVASCRIPT LATO WEB - PARTE 6 di 6: STORICO E PORTAFOGLIO
+// ========================================================
 function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
         let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
         const index = storico.findIndex(item => item.id === idScommessa);
-        
-        const dati = { 
-            id: idScommessa, 
-            domanda: domanda, 
-            risposta_corretta: rispostaCorretta || null, 
-            data_scadenza_ufficiale: expirationTimestamp || null, 
-            data_salvataggio: new Date().toISOString() 
-        };
-        
+        const dati = { id: idScommessa, domanda: domanda, risposta_corretta: rispostaCorretta || null, data_scadenza_ufficiale: expirationTimestamp || null, data_salvataggio: new Date().toISOString() };
         if (index !== -1) {
             storico[index].risposta_corretta = rispostaCorretta || null;
-            // ✅ RISOLTO: Ora utilizza correttamente il parametro in entrata expirationTimestamp
             if (expirationTimestamp) storico[index].data_scadenza_ufficiale = expirationTimestamp;
-        } else { 
-            storico.unshift(dati); 
-        }
-        
+        } else { storico.unshift(dati); }
         if (storico.length > 15) storico = storico.slice(0, 15);
         localStorage.setItem('storico_scommesse_global', JSON.stringify(storico));
     } catch (e) { console.error(e); }
 }
 
-// ✅ CONFIGURATO: Salva i Token sia localmente che nel database Cloud Globale di tutti i Master
 async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
     if (!localStorage.getItem(`token_elaborato_${idScommessa}`)) {
-        
-        // 1. Aggiornamento memoria locale del browser
         let saldoAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
         saldoAttuale += valore;
         localStorage.setItem('saldo_token_global', saldoAttuale);
@@ -506,15 +468,10 @@ async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
         if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
         if (messaggioAlert) alert(messaggioAlert);
 
-        // 2. 🌟 SINCRONIZZAZIONE CLOUD UNIVERSALE DI TUTTI I MASTER
-        const localUsername = localStorage.getItem('identita_utente_global') || localStorage.getItem('ultimo_utente_voto') || "";
         if (localUsername) {
             const userIdNormalizzato = localUsername.toUpperCase().trim();
-            // Nota: "doc" e "db" vengono usati qui sfruttando l'importazione globale a inizio file
             const userGlobalRef = doc(db, "utenti_globali", userIdNormalizzato);
-            
             try {
-                // Incrementa i punti totali atomicamente nel Cloud Server di Firebase
                 await setDoc(userGlobalRef, {
                     username: userIdNormalizzato,
                     sfide_indovinate: valore > 0 ? increment(1) : increment(0),
@@ -522,15 +479,11 @@ async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
                     token_totali: increment(valore),
                     ultimo_aggiornamento: new Date().toISOString()
                 }, { merge: true });
-                console.log("Classifica globale Cloud aggiornata per:", userIdNormalizzato);
-            } catch (e) {
-                console.error("Errore salvataggio classifica cloud:", e);
-            }
+            } catch (e) { console.error("Errore classifica cloud:", e); }
         }
     }
 }
 
-// ✅ RIPRISTINATA: La tua grafica nativa originale con Bonus, Malus e In Pari
 function aggiornaTokenGrafica() {
     const contatore = document.getElementById('token-count');
     const box = document.querySelector('.token-balance-box');
@@ -541,7 +494,6 @@ function aggiornaTokenGrafica() {
         else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }
     }
 }
-
 window.aggiornaTokenGrafica = aggiornaTokenGrafica;
 
 function mostraStoricoSchermata() {
@@ -558,11 +510,4 @@ function mostraStoricoSchermata() {
         html += `<li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>`;
     });
     container.innerHTML = html + "</ul>";
-}
-
-function mostraSchermataInizialeSenzaId() {
-    const l = document.getElementById('loading');
-    if (l) l.innerHTML = `<div style='text-align:center;padding:20px;'><h2 style='color:#1E293B;margin-bottom:10px;'>🔮 Benvenuto su GuessWhen!</h2><p style='color:#64748B;font-size:14px;'>Apri un link sfida ricevuto su WhatsApp per poter votare, accumulare gettoni e scalare la classifica del tuo gruppo di amici! 🤝</p></div>`;
-    if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-    if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
 }
