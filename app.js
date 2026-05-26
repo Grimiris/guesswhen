@@ -110,22 +110,26 @@ async function controllaStato() {
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
             // Se l'utente non ha un nickname, blocca la visualizzazione e mostra solo il modulo di registrazione
-            if (!localUsername) {
-                const identitySectionEl = document.getElementById('identity-section');
-                if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-                if (voteSectionEl) voteSectionEl.classList.add('hidden');
-                
-                document.getElementById('btn-salva-identita').onclick = () => {
-                    const inputNomeVal = document.getElementById('input-username').value.trim();
-                    if (inputNomeVal.length >= 2) {
-                        localStorage.setItem('identita_utente_global', inputNomeVal);
-                        setTimeout(() => { location.reload(); }, 100);
-                    } else {
-                        alert("Scegli un Nickname valido! 🎮");
-                    }
-                };
-                return;
-            }
+     // ✅ BLOCCO OPERATIVO REGISTRAZIONE: Intercetta il valore dell'input id 'input-username'
+if (!localUsername) {
+    const identitySectionEl = document.getElementById('identity-section');
+    if (identitySectionEl) identitySectionEl.classList.remove('hidden');
+    if (voteSectionEl) voteSectionEl.classList.add('hidden');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    document.getElementById('btn-salva-identita').onclick = () => {
+        const inputNomeVal = document.getElementById('input-username').value.trim();
+        if (inputNomeVal.length >= 2) {
+            localStorage.setItem('identita_utente_global', inputNomeVal);
+            // Salva una micro copia d'appoggio per non rompere i calcoli parziali
+            localStorage.setItem('ultimo_utente_voto', inputNomeVal);
+            setTimeout(() => { location.reload(); }, 100);
+        } else {
+            alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
+        }
+    };
+    return;
+}
 
             avviaTimer(dataScadenza);
             
