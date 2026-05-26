@@ -46,6 +46,40 @@ if (!betId) {
 // ========================================================
 async function controllaStato() {
     try {
+        const challengeTitleEl = document.getElementById('challenge-title');
+        const questionEl = document.getElementById('question');
+        const rewardEl = document.getElementById('reward');
+        const contentEl = document.getElementById('content');
+        const timerContainerEl = document.getElementById('timer-container');
+        const voteSectionEl = document.getElementById('vote-section');
+        const resultsSectionEl = document.getElementById('results-section');
+        const thanksSectionEl = document.getElementById('thanks-section');
+        const identitySectionEl = document.getElementById('identity-section');
+
+        // ✅ CORREZIONE CRITICA: Se l'utente non ha un Nickname, blocca tutto e mostra il login SUBITO, anche a scommessa chiusa!
+        if (!localUsername) {
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (contentEl) contentEl.classList.remove('hidden');
+            if (identitySectionEl) identitySectionEl.classList.remove('hidden');
+            if (voteSectionEl) voteSectionEl.classList.add('hidden');
+            if (resultsSectionEl) resultsSectionEl.classList.add('hidden');
+            
+            const txtContatore = document.getElementById('token-count');
+            if (txtContatore) txtContatore.innerText = "Registra un nickname per attivare i gettoni 🪙";
+
+            document.getElementById('btn-salva-identita').onclick = () => {
+                const inputNomeVal = document.getElementById('input-username').value.trim();
+                if (inputNomeVal.length >= 2) {
+                    localStorage.setItem('identita_utente_global', inputNomeVal);
+                    localStorage.setItem('ultimo_utente_voto', inputNomeVal);
+                    setTimeout(() => { location.reload(); }, 100);
+                } else {
+                    alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
+                }
+            };
+            return; // Blocca l'esecuzione qui finché non salva il nome
+        }
+
         console.log("Lettura scommessa cloud ID:", betId);
         const docRef = doc(db, "scommesse", betId);
         const docSnap = await getDoc(docRef);
@@ -57,15 +91,6 @@ async function controllaStato() {
 
         const data = docSnap.data();
         const opzioniDisponibili = data.opzioni_disponibili || ["si", "no"]; 
-        
-        const challengeTitleEl = document.getElementById('challenge-title');
-        const questionEl = document.getElementById('question');
-        const rewardEl = document.getElementById('reward');
-        const contentEl = document.getElementById('content');
-        const timerContainerEl = document.getElementById('timer-container');
-        const voteSectionEl = document.getElementById('vote-section');
-        const resultsSectionEl = document.getElementById('results-section');
-        const thanksSectionEl = document.getElementById('thanks-section');
 
         if (challengeTitleEl) challengeTitleEl.innerText = data.is_quiz ? "🧠 QUIZ GLOBALE" : "🔮 SFIDA DI GRUPPO";
         if (questionEl) questionEl.innerText = data.domanda || "Nuova scommessa";
@@ -73,8 +98,8 @@ async function controllaStato() {
             rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
         }
 
-        // Forza il calcolo del portafoglio cloud prima di mostrare l'interfaccia
-        if (localUsername && typeof aggiornaTokenGrafica === "function") {
+        // Forza il rinfresco del portafoglio cloud ora che l'utente ha un nome
+        if (typeof aggiornaTokenGrafica === "function") {
             await aggiornaTokenGrafica();
         }
 
@@ -88,7 +113,7 @@ async function controllaStato() {
                 resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata. Nessun gettone modificato!</p>`;
                 resultsSectionEl.classList.remove('hidden');
             }
-            if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+            if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
             return; 
         }
 
@@ -97,40 +122,17 @@ async function controllaStato() {
         const isChiusaManualmente = data.chiusa_anticipo === true;
         const haRispostaUfficiale = data.risposta_corretta !== undefined && data.risposta_corretta !== null && data.risposta_corretta !== "";
 
-        if (localUsername && typeof salvaInStoricoLocale === "function") {
+        if (typeof salvaInStoricoLocale === "function") {
             salvaInStoricoLocale(betId, data.domanda, data.risposta_corretta, data.timestamp_scadenza || data.data_scadenza);
         }
 
         if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) {
-                resultsSectionEl.classList.remove('hidden');
-            }
+            if (identitySectionEl) identitySectionEl.classList.add('hidden');
+            if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
-            // Se l'utente non ha un nickname, blocca la visualizzazione e mostra solo il modulo di registrazione
-     // ✅ BLOCCO OPERATIVO REGISTRAZIONE: Intercetta il valore dell'input id 'input-username'
-if (!localUsername) {
-    const identitySectionEl = document.getElementById('identity-section');
-    if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-    if (voteSectionEl) voteSectionEl.classList.add('hidden');
-    if (loadingEl) loadingEl.style.display = 'none';
-
-    document.getElementById('btn-salva-identita').onclick = () => {
-        const inputNomeVal = document.getElementById('input-username').value.trim();
-        if (inputNomeVal.length >= 2) {
-            localStorage.setItem('identita_utente_global', inputNomeVal);
-            // Salva una micro copia d'appoggio per non rompere i calcoli parziali
-            localStorage.setItem('ultimo_utente_voto', inputNomeVal);
-            setTimeout(() => { location.reload(); }, 100);
-        } else {
-            alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
-        }
-    };
-    return;
-}
-
             avviaTimer(dataScadenza);
             
             const welcomeBox = document.getElementById('welcome-user-box');
@@ -142,12 +144,13 @@ if (!localUsername) {
                 if (voteSectionEl) voteSectionEl.classList.add('hidden');
                 if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
             } else {
+                if (identitySectionEl) identitySectionEl.classList.add('hidden');
                 if (voteSectionEl) voteSectionEl.classList.remove('hidden');
                 generaBottoniVoto(opzioniDisponibili);
             }
         }
         
-        if (localUsername && typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+        if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
 
