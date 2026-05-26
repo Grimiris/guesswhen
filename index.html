@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔮 GuessWhen Room</title>
     <style>
-        /* 🎨 VERTICAL STACK MOBILE DESIGN SYSTEM */
+        /* 🎨 DESIGN SYSTEM INTERFACCIA COMPATTA MOBILE */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             background-color: #F8FAFC; 
@@ -28,12 +28,13 @@
             flex-direction: column;
         }
         h2 { margin-top: 0; color: #0F172A; text-align: center; }
+        h3 { color: #0F172A; text-align: center; margin-bottom: 20px; }
         .hidden { display: none !important; }
         .status-badge { display: inline-block; background: #CBD5E1; color: #334155; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; margin-bottom: 15px; }
         .timer-badge { display: block; text-align: center; color: #2563EB; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
         .btn-option { display: block; width: 100%; padding: 12px; margin: 8px 0; background: #2563EB; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .btn-option:hover { background: #1D4ED8; }
-        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #CBD5E1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #CBD5E1; border-radius: 6px; box-sizing: border-box; font-size: 15px; text-align: center; }
         
         .token-balance-box { background: #EDF2F7; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14px; border: 1px solid #E2E8F0; }
         .token-positivo { background: #E8F5E9; color: #2E7D32; border-color: #C8E6C9; }
@@ -49,38 +50,39 @@
 
     <div class="card">
         
-        <!-- 🪙 1. SYNCHRONIZED CLOUD TOKEN PORTFOLIO DISPLAY -->
-        <div id="token-display-wrapper" class="token-balance-box">
-            <span id="token-count">Caricamento gettoni... 🔄</span>
-        </div>
-
-        <!-- ⏳ 2. SERVER CONNECTION LOADING SCREEN -->
+        <!-- ⏳ SCHERMATA DI CARICAMENTO DI BACKGROUND -->
         <div id="loading" style="text-align: center; padding: 20px; font-weight: bold; color: #64748B;">
             Connessione al server in corso... ⏳
         </div>
 
-        <!-- 🔮 3. LIVE MODULE PLAYBACK PANELS -->
+        <!-- 🔑 SCHERMATA A: REGISTRAZIONE PROFILO UTENTE (Nasconde tutto il resto all'inizio) -->
+        
+            <h3>🔮 Benvenuto su GuessWhen!</h3>
+            <p style="color: #64748B; font-size: 14px; margin-bottom: 20px;">Scegli un nome di gioco definitivo per salvare le tue statistiche, scalare la classifica del gruppo e partecipare alle sfide dei tuoi amici.</p>
+            <input type="text" id="input-username" placeholder="Inserisci il tuo Nickname...">
+            <button id="btn-salva-identita" class="btn-option" style="background: #10B981; margin-top: 5px;">Salva Nickname ed Entra</button>
+        </div>
+
+        <!-- 🔮 SCHERMATA B: PLANCIA DI GIOCO COMPLETA (Si attiva solo se localUsername esiste) -->
         <div id="content" class="hidden">
+            
+            <!-- 🪙 Portafoglio Cloud centralizzato in cima alla stanza -->
+            <div id="token-display-wrapper" class="token-balance-box">
+                <span id="token-count">Aggiornamento gettoni... 🔄</span>
+            </div>
+
             <center><span id="challenge-title" class="status-badge">🔮 SFIDA DI GRUPPO</span></center>
-            <h2 id="question">Dati della scommessa...</h2>
+            <h2 id="question">Caricamento domanda...</h2>
             <div id="timer-container"></div>
             <p id="reward" style="text-align: center; font-weight: bold; color: #475569; margin-bottom: 20px;"></p>
 
-            <!-- NICKNAME ASSIGNMENT CONTAINER -->
-            
-                <input type="text" id="input-username" placeholder="Scegli un Nickname definitivo...">
-                <button id="btn-salva-identita" class="btn-option" style="background: #10B981;">Salva Nickname ed Entra</button>
-            </div>
-
-            <!-- ACTIVE VOTING SYSTEM BUTTON CONTAINER -->
+            <!-- Modulo Voto Attivo -->
             <div id="vote-section" class="hidden">
                 <div id="welcome-user-box" style="margin-bottom: 15px; font-weight: bold; text-align: center; color: #475569;"></div>
-                <div id="options-container">
-                    <!-- Dynamic buttons load here -->
-                </div>
+                <div id="options-container"></div>
             </div>
 
-            <!-- FINAL VERDICT AND CHART METRICS CONTAINER -->
+            <!-- Modulo Grafici e Esito Chiuso -->
             <div id="results-section" class="hidden">
                 <div id="winners-list" style="margin-bottom: 10px;"></div>
                 <div id="losers-list" style="margin-bottom: 15px;"></div>
@@ -89,27 +91,28 @@
                 <ul id="consolation-list"></ul>
             </div>
 
-            <!-- VOTE CONFIRMATION CARD CONTAINER -->
+            <!-- Modulo Conferma Post-Voto -->
             <div id="thanks-section" class="hidden">
                 <div style="background: #E0F2FE; color: #0369A1; padding: 15px; text-align: center; border-radius: 8px; font-weight: 500; font-size: 14px;">
                     🎯 Voto registrato con successo!
                     <br>
-                    <span style="font-size: 12px; color: #0C4A6E;">Chance di estrazione aggiornate. Attendi il verdetto del Master! ⏱</span>
+                    <span style="font-size: 12px; color: #0C4A6E;">Chance di estrazione aggiornate. Attendi il verdetto ufficiale del Master! ⏱</span>
                 </div>
             </div>
-        </div>
 
-        <!-- 📜 4. BOTTOM-STACKED CHALLENGE LOG HISTORY -->
-        <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 25px 0 15px 0;">
-        <h4 style="margin: 0 0 12px 0; color: #475569; font-size: 14px; text-align: center; font-weight: bold;">📜 Le Tue Scommesse Recenti</h4>
-        <div id="storico-container"></div>
+            <!-- 📜 Sezione Storico Recenti agganciata in fondo alla plancia di gioco reale -->
+            <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 25px 0 15px 0;">
+            <h4 style="margin: 0 0 12px 0; color: #475569; font-size: 14px; text-align: center; font-weight: bold;">📜 Le Tue Scommesse Recenti</h4>
+            <div id="storico-container"></div>
 
+        </div> <!-- Fine blocco #content -->
     </div>
 
-    <!-- 🌟 FORCE INVALIDATES CACHE PIPELINES USING V=120.0 -->
-    <script type="module" src="app.js?v=120.0"></script>
+    <!-- 🌟 PARAMETRO REFRESH COMPILATORE AZZERATO A V=200.0 -->
+    <script type="module" src="app.js?v=200.0"></script>
 
 </body>
 </html>
+
 
 
