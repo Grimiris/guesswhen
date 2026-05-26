@@ -27,432 +27,423 @@ if (!betId) {
     }
 }
 
-const loadingEl = document.getElementById('loading');
+const screenLoading = document.getElementById('screen-loading');
+const screenLogin = document.getElementById('screen-login');
+const screenDashboard = document.getElementById('screen-dashboard');
+const screenCreate = document.getElementById('screen-create');
+const screenPlayRoom = document.getElementById('screen-play-room');
+
 let localUsername = localStorage.getItem('identita_utente_global') || "";
-
-// ✅ GESTORE ACCESSO ISOLATO E BLINDATO
-function inizializzaAccessoUtente() {
-    const identitySectionEl = document.getElementById('identity-section');
-    const contentEl = document.getElementById('content');
-    const tokenBox = document.getElementById('token-display-wrapper');
-    const storicoBox = document.getElementById('storico-container');
-    const btnSalva = document.getElementById('btn-salva-identita');
-
+// ========================================================
+// JAVASCRIPT - PARTE 2 di 5: NAVIGAZIONE E CREAZIONE MATCH
+// ========================================================
+async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
-        // Nasconde tutta la grafica del gioco all'avvio
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (contentEl) contentEl.classList.remove('hidden');
-        if (identitySectionEl) identitySectionEl.classList.remove('hidden');
-        if (tokenBox) tokenBox.style.display = 'none';
-        if (storicoBox) storicoBox.style.display = 'none';
+        if (screenLoading) screenLoading.style.display = 'none';
+        if (screenLogin) screenLogin.classList.remove('hidden');
         
-        const hrList = document.querySelectorAll('hr, h4');
-        hrList.forEach(el => el.style.display = 'none');
+        document.getElementById('btn-salva-identita').onclick = () => {
+            const nome = document.getElementById('input-username').value.trim();
+            if (nome.length >= 2) {
+                localStorage.setItem('identita_utente_global', nome);
+                window.location.reload();
+            } else { alert("Inserisci un Nickname valido! 🎮"); }
+        };
+        return;
+    }
 
-        if (btnSalva) {
-            btnSalva.onclick = function() {
-                const inputNomeVal = document.getElementById('input-username').value.trim();
-                if (inputNomeVal.length >= 2) {
-                    localStorage.setItem('identita_utente_global', inputNomeVal);
-                    localStorage.setItem('ultimo_utente_voto', inputNomeVal);
-                    window.location.reload();
-                } else {
-                    alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮");
-                }
+    await aggiornaTokenGrafica();
+
+    if (!betId) {
+        if (screenLoading) screenLoading.style.display = 'none';
+        if (screenDashboard) screenDashboard.classList.remove('hidden');
+        caricaDashboardMaster();
+
+        document.getElementById('btn-vai-a-creazione').onclick = () => {
+            if (screenDashboard) screenDashboard.classList.add('hidden');
+            if (screenCreate) screenCreate.classList.remove('hidden');
+            
+            const oggi = new Date();
+            const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
+            document.getElementById('input-data-scadenza').value = domani.toISOString().split('T')[0];
+            document.getElementById('input-ora-scadenza').value = "20:00";
+        };
+
+        document.getElementById('btn-torna-dash').onclick = (e) => {
+            e.preventDefault();
+            if (screenCreate) screenCreate.classList.add('hidden');
+            if (screenDashboard) screenDashboard.classList.remove('hidden');
+        };
+
+        document.getElementById('btn-lancia-sfida').onclick = async () => {
+            const q = document.getElementById('etQuestion').value.trim();
+            const r = document.getElementById('etReward').value.trim();
+            const p = document.getElementById('etPenalty').value.trim();
+            const inputData = document.getElementById('input-data-scadenza').value;
+            const inputOra = document.getElementById('input-ora-scadenza').value;
+
+            if (!q || !r || !p || !inputData || !inputOra) {
+                alert("Compila tutti i campi!"); return;
+            }
+
+            const scadenzaSelezionata = new Date(`${inputData}T${inputOra}`);
+            if (scadenzaSelezionata <= new Date()) {
+                alert("Imposta una data e orario futuri! ⏰"); return;
+            }
+
+            const uniqueId = Math.random().toString(36).substring(2, 8);
+            const dataScommessa = {
+                domanda: q, premio: r, penitenza: p,
+                opzioni_disponibili: ["si", "no"],
+                timestamp_scadenza: scadenzaSelezionata.getTime(),
+                creatore_nome: localUsername, risposta_corretta: "", chiusa_anticipo: false, annullata: false
             };
-        }
-    } else {
-        // L'utente ha il nickname: avvia il gioco normalmente
-        if (identitySectionEl) identitySectionEl.classList.add('hidden');
-        if (tokenBox) tokenBox.style.display = 'block';
-        if (storicoBox) storicoBox.style.display = 'block';
 
-        if (!betId) {
-            if (loadingEl) {
-                loadingEl.innerHTML = `<div style='text-align:center;padding:10px;'><h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3><p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter entrare nel tavolo di gioco con i tuoi amici! 🤝</p></div>`;
-            }
-            if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-            if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-        } else {
-            if (betId) {
-                betId = betId.trim();
-                controllaStato();
-            }
-        }
+            await setDoc(doc(db, "scommesse", uniqueId), dataScommessa);
+            
+            const linkGara = `${window.location.origin}${window.location.pathname}?id=${uniqueId}`;
+            const testoMessaggio = encodeURIComponent(`🔮 *NUOVA SFIDA SU GUESSWHEN!*\n\n“${q}”\n\n🎁 *Premio:* ${r}\n🌶️ *Penitenza:* ${p}\n\nEntra e vota qui 👇\n${linkGara}`);
+            window.location.href = `https://whatsapp.com{testoMessaggio}`;
+        };
+    } else {
+        if (screenLoading) screenLoading.style.display = 'none';
+        if (screenPlayRoom) screenPlayRoom.classList.remove('hidden');
+        eseguiStanzaGioco();
     }
 }
+// ========================================================
+// JAVASCRIPT - PARTE 3 di 5: RENDERING STORICO E AVVIO ROOM
+// ========================================================
+async function caricaDashboardMaster() {
+    const contenitore = document.getElementById('lista-sfide-master');
+    if (!contenitore) return;
+    contenitore.innerHTML = "<p style='text-align:center;color:#64748B;font-size:13px;'>Caricamento storico... ⏳</p>";
 
-// Esegue l'inizializzazione appena lo script viene letto
-inizializzaAccessoUtente();
-// ========================================================
-// JAVASCRIPT - PARTE 2 di 3: LOGICA DI STATO E BOTTONI VOTO
-// ========================================================
-async function controllaStato() {
     try {
-        console.log("Lettura scommessa cloud ID:", betId);
-        const docRef = doc(db, "scommesse", betId);
-        const docSnap = await getDoc(docRef);
+        const snap = await getDocs(collection(db, "scommesse"));
+        contenitore.innerHTML = "";
+        let contatoreSfide = 0;
 
+        snap.forEach(mDoc => {
+            const d = mDoc.data();
+            if (d.creatore_nome === localUsername) {
+                contatoreSfide++;
+                let badgeStato = `<div class="status-dot dot-attiva">• ATTIVA</div>`;
+                if (d.annullata) badgeStato = `<div class="status-dot dot-annullata">• ANNULLATA</div>`;
+                else if (d.risposta_corretta) badgeStato = `<div class="status-dot dot-chiusa">• CHIUSA</div>`;
+
+                const riga = document.createElement('div');
+                riga.className = "sub-card";
+                riga.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        ${badgeStato}
+                        <div class="id-tag">#${mDoc.id}</div>
+                    </div>
+                    <h3 style="text-align:left; font-size:18px; margin:0 0 10px 0; text-transform:none;">${d.domanda}</h3>
+                    <div style="font-size:13px; color:#64748B; margin-bottom:10px;">🎁 Premio: ${d.premio} | 👹 Penitenza: ${d.penitenza}</div>
+                    <div class="match-buttons">
+                        <a href="?id=${mDoc.id}" class="btn-main btn-black" style="padding:10px; font-size:13px; margin:0; flex:1;">Apri</a>
+                    </div>
+                `;
+                contenitore.appendChild(riga);
+            }
+        });
+
+        if (contatoreSfide === 0) {
+            contenitore.innerHTML = "<p style='text-align:center;color:#94A3B8;font-size:13px;padding:20px;'>Nessuna sfida creata da te. Clicca '+ Nuova' in alto per iniziare! 🚀</p>";
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function eseguiStanzaGioco() {
+    try {
+        const docSnap = await getDoc(doc(db, "scommesse", betId));
         if (!docSnap.exists()) {
-            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato nel database server.`;
+            document.getElementById('room-question').innerText = "Sfida non trovata nel database server.";
             return;
         }
 
         const data = docSnap.data();
-        const opzioniDisponibili = data.opzioni_disponibili || ["si", "no"]; 
-        
-        const challengeTitleEl = document.getElementById('challenge-title');
-        const questionEl = document.getElementById('question');
-        const rewardEl = document.getElementById('reward');
-        const contentEl = document.getElementById('content');
-        const timerContainerEl = document.getElementById('timer-container');
-        const voteSectionEl = document.getElementById('vote-section');
-        const resultsSectionEl = document.getElementById('results-section');
-        const thanksSectionEl = document.getElementById('thanks-section');
+        document.getElementById('room-id-tag').innerText = `#${betId}`;
+        document.getElementById('room-question').innerText = data.domanda;
+        document.getElementById('room-reward').innerText = `🎁 Premio: ${data.premio}`;
+        document.getElementById('room-penalty').innerText = `👹 Penitenza: ${data.penitenza}`;
 
-        if (challengeTitleEl) challengeTitleEl.innerText = data.is_quiz ? "🧠 QUIZ GLOBALE" : "🔮 SFIDA DI GRUPPO";
-        if (questionEl) questionEl.innerText = data.domanda || "Nuova scommessa";
-        if (rewardEl) {
-            rewardEl.innerText = data.is_quiz ? "🎯 Punti Quiz: " + (data.premio || "0") : "🎁 In palio: " + (data.premio || "Nessun premio");
-        }
-
-        if (typeof aggiornaTokenGrafica === "function") {
-            await aggiornaTokenGrafica();
-        }
-
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (contentEl) contentEl.classList.remove('hidden');
-
-        if (data.annullata === true) {
-            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA ❌</span>`;
-            if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) {
-                resultsSectionEl.innerHTML = `<p style="text-align:center; padding:20px; color:#64748B; font-weight:500;">La scommessa è stata annullata. Nessun gettone modificato!</p>`;
-                resultsSectionEl.classList.remove('hidden');
-            }
-            if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-            return; 
-        }
-
-        let dataScadenza = data.timestamp_scadenza ? new Date(data.timestamp_scadenza) : (data.data_scadenza ? new Date(data.data_scadenza) : new Date());
-        const oraCorrente = new Date();
-        const isChiusaManualmente = data.chiusa_anticipo === true;
-        const haRispostaUfficiale = data.risposta_corretta !== undefined && data.risposta_corretta !== null && data.risposta_corretta !== "";
-
-        if (typeof salvaInStoricoLocale === "function") {
-            salvaInStoricoLocale(betId, data.domanda, data.risposta_corretta, data.timestamp_scadenza || data.data_scadenza);
-        }
-
-        if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
-            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
-            if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) {
-                resultsSectionEl.classList.remove('hidden');
-            }
-            mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
+        const badgeStato = document.getElementById('room-status-badge');
+        if (data.annullata) {
+            badgeStato.className = "status-dot dot-annullata"; badgeStato.innerText = "• ANNULLATA";
+        } else if (data.risposta_corretta) {
+            badgeStato.className = "status-dot dot-chiusa"; badgeStato.innerText = "• CHIUSA";
         } else {
-            avviaTimer(dataScadenza);
-            
-            const welcomeBox = document.getElementById('welcome-user-box');
-            if (welcomeBox) {
-                welcomeBox.innerHTML = `👋 Giocatore: <span style="text-transform: capitalize;">${localUsername.toLowerCase()}</span>`;
-            }
+            badgeStato.className = "status-dot dot-attiva"; badgeStato.innerText = "• ATTIVA";
+        }
 
+        const oraCorrente = new Date().getTime();
+        const isScaduta = oraCorrente >= data.timestamp_scadenza;
+        const haEsito = data.risposta_corretta !== "";
+
+        if (isScaduta || haEsito || data.annullata) {
+            document.getElementById('timer-container').innerHTML = "🔒 Votazioni Concluse";
+            document.getElementById('room-vote-actions').classList.add('hidden');
+            document.getElementById('room-results-panel').classList.remove('hidden');
+            document.getElementById('room-participants-card').classList.remove('hidden');
+            mostraRisultatiStanza(data);
+        } else {
+            avviaTimerStanza(data.timestamp_scadenza);
             if (localStorage.getItem(`ha_votato_${betId}`)) {
-                if (voteSectionEl) voteSectionEl.classList.add('hidden');
-                if (thanksSectionEl) thanksSectionEl.classList.remove('hidden');
+                document.getElementById('room-vote-actions').classList.add('hidden');
+                document.getElementById('room-results-panel').classList.remove('hidden');
+                mostraRisultatiStanza(data);
             } else {
-                if (voteSectionEl) voteSectionEl.classList.remove('hidden');
-                generaBottoniVoto(opzioniDisponibili);
+                document.getElementById('room-vote-actions').classList.remove('hidden');
+                generaBottoniVotoStanza(data.opzioni_disponibili);
             }
         }
-        
-        if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
-    } catch (errore) { console.error("Errore controllaStato:", errore); }
-}
 
-function avviaTimer(dataScadenza) {
+        // Se sei il Creatore Admin della sfida, accende il pannello di controllo esclusivo nero
+        if (data.creatore_nome === localUsername && !haEsito && !data.annullata) {
+            document.getElementById('room-admin-panel').classList.remove('hidden');
+            generaControlliAdmin(data);
+        }
+    } catch (e) { console.error(e); }
+}
+// ========================================================
+// JAVASCRIPT - PARTE 4 di 5: UTILITY VOTO E CONTROLLI ADMIN
+// ========================================================
+function avviaTimerStanza(timestampScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
     function aggiorna() {
-        const ora = new Date();
-        const diff = dataScadenza - ora;
-        if (diff <= 0) { location.reload(); return; }
+        const ora = new Date().getTime();
+        const diff = timestampScadenza - ora;
+        if (diff <= 0) { window.location.reload(); return; }
         const ore = Math.floor(diff / (1000 * 60 * 60));
         const minuti = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const secondi = Math.floor((diff % (1000 * 60)) / 1000);
-        container.innerHTML = `<span class="timer-badge">⏳ Scade tra: ${ore}h ${minuti}m ${secondi}s</span>`;
+        container.innerHTML = `⏳ Scade tra: ${ore}h ${minuti}m ${secondi}s`;
     }
     aggiorna();
     setInterval(aggiorna, 1000);
 }
 
-function generaBottoniVoto(opzioni) {
+function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
     if (!container) return;
     container.innerHTML = "";
     opzioni.forEach(opzione => {
         const btn = document.createElement('button');
-        btn.className = "btn-option";
-        btn.innerText = opzione.toUpperCase(); 
-        btn.onclick = () => inviaVoto(opzione);
+        btn.className = "btn-main";
+        btn.style.marginBottom = "10px";
+        btn.innerText = `VOTA ${opzione.toUpperCase()}`; 
+        btn.onclick = () => inviaVotoStanza(opzione);
         container.appendChild(btn);
     });
 }
 
-async function inviaVoto(opzioneScelta) {
-    const loadingEl = document.getElementById('loading');
-    if (!localUsername) { alert("Inserisci il tuo nome prima di votare!"); return; }
-    const usernameNormalizzato = localUsername.toUpperCase().trim(); 
-
+async function inviaVotoStanza(opzioneScelta) {
     try {
-        if (loadingEl) { loadingEl.style.display = 'block'; loadingEl.innerText = "Invio voto in corso... 🛡️"; }
-
+        const usernameNormalizzato = localUsername.toUpperCase().trim();
         const votiRef = collection(db, "scommesse", betId, "voti");
         const snapshotVoti = await getDocs(votiRef);
+        
         let giaVotato = false;
         snapshotVoti.forEach(docVoto => {
             if (docVoto.data().utente.toUpperCase().trim() === usernameNormalizzato) giaVotato = true;
         });
 
-        if (giaVotato) {
-            if (loadingEl) loadingEl.style.display = 'none';
-            alert(`⚠️ Hai già espresso un voto per questa sfida!`);
-            return; 
-        }
+        if (giaVotato) { alert("⚠️ Hai già espresso un voto per questa sfida!"); return; }
 
-        const saldoTokenAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0,3);
-        const votoSpecificoRef = doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno);
-
-        await setDoc(votoSpecificoRef, {
+        const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0, 3);
+        await setDoc(doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno), {
             utente: localUsername, 
             scelta: opzioneScelta.toLowerCase().trim(),
-            timestamp: new Date().toISOString(),
-            saldo_token: saldoTokenAttuale 
+            timestamp: new Date().toISOString()
         });
         
         localStorage.setItem(`ha_votato_${betId}`, opzioneScelta.toLowerCase().trim());
-        setTimeout(() => { location.reload(); }, 100);
+        window.location.reload();
     } catch (e) { console.error(e); }
 }
+
+function generaControlliAdmin(dataScommessa) {
+    const layoutChoices = document.getElementById('admin-choices-layout');
+    if (!layoutChoices) return;
+    layoutChoices.innerHTML = "";
+
+    // Recupera in tempo reale quanti amici hanno votato finora
+    getDocs(collection(db, "scommesse", betId, "voti")).then(snap => {
+        document.getElementById('admin-vote-count-text').innerText = `${snap.size} voti`;
+    });
+
+    dataScommessa.opzioni_disponibili.forEach(opzione => {
+        const btnAdmin = document.createElement('button');
+        btnAdmin.className = "btn-admin-choice";
+        btnAdmin.innerText = opzione.toUpperCase();
+        btnAdmin.onclick = () => decretaRisultatoUfficialeCloud(opzione, dataScommessa.opzioni_disponibili);
+        layoutChoices.appendChild(btnAdmin);
+    });
+}
 // ========================================================
-// JAVASCRIPT - PARTE 3A di 3: VERDETTI E DISTRIBUZIONE
+// JAVASCRIPT - PARTE 5 di 5: ALGORITMO PONDERATO E GRAFICI
 // ========================================================
-async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
+async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
+    const rispCorrettaNorm = opzioneVincente.toLowerCase().trim().replace("ì", "i");
+    
+    if (!confirm(`Vuoi impostare "${opzioneVincente.toUpperCase()}" come risultato definitivo? Verrà eseguito il calcolo ponderato dei gettoni.`)) return;
+
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
-        const winnersList = document.getElementById('winners-list');
-        const losersList = document.getElementById('losers-list');
-        const chartsContainer = document.getElementById('charts-container');
-        const timerContainerEl = document.getElementById('timer-container');
-        const consolationList = document.getElementById('consolation-list');
-
-        if (winnersList) winnersList.innerHTML = "";
-        if (losersList) losersList.innerHTML = "";
-        if (consolationList) consolationList.innerHTML = "";
-        if (chartsContainer) chartsContainer.innerHTML = "";
-
-        const haEsitoUfficiale = rispostaCorretta !== undefined && rispostaCorretta !== null && rispostaCorretta !== "";
         
-        if (isAnnullataCloud || (haEsitoUfficiale && votiSnap.size <= 1)) {
-            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEE2E2; color:#991B1B; border: 1px solid #FCA5A5;">⚠️ SFIDA ANNULLATA ❌</span>`;
-            if (winnersList) winnersList.innerHTML = "<p style='font-size:14px; color:#64748B; text-align:center; font-weight:500;'>Sfida annullata automaticamente: è richiesto un minimo di 2 partecipanti per convalidare il match.</p>";
-            return; 
-        }
-
-        if (!rispostaCorretta) {
-            if (winnersList) winnersList.innerHTML = "<p style='font-size:14px; color:#888; text-align:center;'>⏱ Match Terminato. In attesa del risultato ufficiale dall'organizzatore...</p>";
-            if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#FEF3C7; color:#92400E; padding:5px 10px; border-radius:5px; font-weight:bold;">🔒 VOTAZIONI CHIUSE</span>`;
+        // ⚠️ REGOLA DI ANNULLAMENTO AUTOMATICO: Minimo 2 partecipanti richiesti
+        if (votiSnap.size <= 1) {
+            await setDoc(doc(db, "scommesse", betId), { annullata: true, chiusa_anticipo: true }, { merge: true });
+            alert("Sfida annullata automaticamente: è richiesto un minimo di 2 partecipanti per convalidare il match.");
+            window.location.reload();
             return;
         }
 
-        if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155; padding:5px 10px; border-radius:5px; font-weight:bold;">🏆 SFIDA CONCLUSA</span>`;
-
-        const conteggi = {};
-        let totaleVoti = 0;
-        opzioni.forEach(o => conteggi[o.toLowerCase().trim()] = 0);
-
-        const rispCorrettaNorm = rispostaCorretta.toLowerCase().trim().replace("ì", "i");
-        let contatoreVincitori = 0;
-        let contatorePerdenti = 0;
-        const votiDataArray = [];
-
-        votiSnap.forEach(votoDoc => {
-            const v = votoDoc.data();
-            votiDataArray.push(v);
-            const sceltaUtenteNorm = v.scelta.toLowerCase().trim().replace("ì", "i");
-            const chiaveConteggio = v.scelta.toLowerCase().trim();
-
-            if (conteggi[chiaveConteggio] !== undefined) { conteggi[chiaveConteggio]++; totaleVoti++; }
-            else { conteggi[chiaveConteggio] = 1; totaleVoti++; }
-
-            if (sceltaUtenteNorm === rispCorrettaNorm) contatoreVincitori++; else contatorePerdenti++;
+        // Scarica la mappa completa dei gettoni per l'estrazione a sorte della fortuna
+        const utentiSnap = await getDocs(collection(db, "utenti_globali"));
+        const mappaGettoniCloud = {};
+        utentiSnap.forEach(uDoc => {
+            mappaGettoniCloud[uDoc.id.toUpperCase().trim()] = uDoc.data().token_totali || 0;
         });
 
-        const tuttiVincitori = (contatorePerdenti === 0 && contatoreVincitori > 0);
-        const tuttiPerdenti = (contatoreVincitori === 0 && contatorePerdenti > 0);
+        const vincitoriPossibili = [];
+        const perdentiPossibili = [];
 
-        if (winnersList) {
-            if (tuttiVincitori) {
-                winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#E8F5E9; padding:15px; color:#2E7D32; border-radius:10px; text-align:center; font-weight:bold;">🥳 EN PLEIN DI VINCITE! Tutti prendono +1 Token.</div>`;
-            } else if (tuttiPerdenti) {
-                winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#F1F5F9; padding:15px; color:#475569; border-radius:10px; text-align:center; font-weight:bold;">🤷‍♂️ NESSUN VINCITORE! Tutti Silurati (-1 Token).</div>`;
-            } else if (vincitoreEstratto && vincitoreEstratto !== "Nessuno") {
-                winnersList.innerHTML = `<div class="vincitore-unico-box" style="background:#FEF3C7; border:2px solid #F59E0B; padding:15px; border-radius:10px; color:#B45309; text-align:center;">👑 VINCITORE ASSOLUTO ESTRATTO:<br><span style="font-weight:bold; font-size:20px;">${vincitoreEstratto}</span></div>`;
-            }
-        }
-
-        if (losersList && !tuttiVincitori && perdenteEstratto && perdenteEstratto !== "Nessuno") {
-            losersList.innerHTML = `<div class="perdente-unico-box" style="background:#FEE2E2; border:2px solid #EF4444; padding:15px; border-radius:10px; color:#991B1B; text-align:center; margin-top:10px;">☠️ PERDENTE ASSOLUTO (PAGA LA PENITENZA):<br><span style="font-weight:bold; font-size:20px;">${perdenteEstratto}</span> 😭</div>`;
-        }
-
-        votiDataArray.forEach(v => {
-            const li = document.createElement('li');
-            li.style = "padding:8px; border-bottom:1px solid #F1F5F9; list-style:none; font-size:13px; color:#334155;";
+        votiSnap.forEach(vDoc => {
+            const v = vDoc.data();
             const sceltaUtenteNorm = v.scelta.toLowerCase().trim().replace("ì", "i");
-
+            
             if (sceltaUtenteNorm === rispCorrettaNorm) {
-                if (tuttiVincitori) {
-                    li.innerHTML = `🔹 <b>${v.utente}</b>: Indovinato! <span style="color:#16A34A;font-weight:bold;">+1 Token</span>`;
-                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, null);
-                } else {
-                    const isVincitoreAssoluto = (v.utente === vincitoreEstratto);
-                    li.innerHTML = isVincitoreAssoluto ? `👑 <b>${v.utente}</b>: <span style="color:#D97706;font-weight:bold;">VINCITORE ASSOLUTO</span>` : `🔹 <b>${v.utente}</b>: Indovinato! <span style="color:#16A34A;font-weight:bold;">+1 Token</span>`;
-                    if (v.utente === localUsername) modificaBilancioToken(betId, 1, "Hai indovinato la scommessa! +1 Token. 🪙");
-                }
+                vincitoriPossibili.push(v.utente);
             } else {
-                if (tuttiPerdenti) {
-                    li.innerHTML = `🌶️ <b>${v.utente}</b>: Sbagliato! <span style="color:#DC2626;font-weight:bold;">-1 Token</span>`;
-                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, null);
-                } else {
-                    const isPerdenteAssoluto = (v.utente === perdenteEstratto);
-                    li.innerHTML = isPerdenteAssoluto ? `☠️ <b>${v.utente}</b>: <span style="color:#DC2626;font-weight:bold;">PERDENTE ASSOLUTO (Penitenza)</span>` : `🌶️ <b>${v.utente}</b>: Sbagliato! <span style="color:#EF4444;">-1 Token (Penitenza minore)</span>`;
-                    if (v.utente === localUsername) modificaBilancioToken(betId, -1, "Hai sbagliato la risposta! -1 Token. 🌶️");
-                }
+                perdentiPossibili.push(v.utente);
             }
-            if (consolationList) consolationList.appendChild(li);
         });
 
-        if (chartsContainer && totaleVoti > 0) {
-            chartsContainer.innerHTML = `<h4 style="margin-bottom:10px; font-size:14px; color:#1E293B;">Riepilogo Percentuali Voti:</h4>`;
-            opzioni.forEach(opzione => {
-                const chiaveOpzione = opzione.toLowerCase().trim();
-                const count = conteggi[chiaveOpzione] || 0;
-                const pct = Math.round((count / totaleVoti) * 100);
-                const isCorrect = opzione.toLowerCase().trim().replace("ì", "i") === rispCorrettaNorm;
-                const fillStyle = isCorrect ? 'background-color: #C8E6C9;' : '';
-                
-                chartsContainer.innerHTML += `
-                    <div style="margin-bottom:8px; font-size:12px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
-                            <span style="font-weight:500; text-transform:uppercase;">${opzione}</span>
-                            <span style="color:#64748B;">${count} voti (${pct}%)</span>
-                        </div>
-                        <div style="background:#E2E8F0; width:100%; height:8px; border-radius:4px; overflow:hidden;">
-                            <div style="background:#2563EB; width:${pct}%; ${fillStyle} height:100%;"></div>
-                        </div>
-                    </div>`;
+        // 🎲 ESTRAZIONE DEL VINCITORE CON BIGLIETTI FORTUNA PONDERATI (Più Gettoni = Più biglitti extra)
+        let vincitoreAssoluto = "Nessuno";
+        if (vincitoriPossibles.length > 0) {
+            const urnaVincitori = [];
+            vincitoriPossibili.forEach(v => {
+                const gettoniAttuali = mappaGettoniCloud[v.toUpperCase().trim()] || 0;
+                const bigliettiSpettanti = gettoniAttuali > 0 ? (1 + gettoniAttuali) : 1;
+                for (let i = 0; i < bigliettiSpettanti; i++) { urnaVincitori.push(v); }
             });
+            vincitoreAssoluto = urnaVincitori[Math.floor(Math.random() * urnaVincitori.length)];
         }
-    } catch (e) { console.error(e); }
+
+        // 🎲 ESTRAZIONE DEL PERDENTE CON BIGLIETTI MALUS PONDERATI (Più Gettoni Negativi = Più biglietti della sfortuna)
+        let perdenteAssoluto = "Nessuno";
+        if (perdentiPossibili.length > 0) {
+            const urnaPerdenti = [];
+            perdentiPossibili.forEach(p => {
+                const gettoniAttuali = mappaGettoniCloud[p.toUpperCase().trim()] || 0;
+                const bigliettiSpettanti = gettoniAttuali < 0 ? (1 + Math.abs(gettoniAttuali)) : 1;
+                for (let i = 0; i < bigliettiSpettanti; i++) { urnaPerdenti.push(p); }
+            });
+            perdenteAssoluto = urnaPerdenti[Math.floor(Math.random() * urnaPerdenti.length)];
+        }
+
+        // Salva i verdetti nel Cloud
+        await setDoc(doc(db, "scommesse", betId), {
+            risposta_corretta: rispCorrettaNorm,
+            vincitore_estratto: vincitoreAssoluto,
+            perdente_estratto: perdenteAssoluto,
+            chiusa_anticipo: true
+        }, { merge: true });
+
+        alert(`🏆 Verdetto registrato con successo!\n👑 Vincitore: ${vincitoreAssoluto}\n☠️ Perdente: ${perdenteAssoluto}`);
+        window.location.reload();
+
+    } catch (e) { console.error("Errore nell'algoritmo ponderato:", e); }
 }
-// ========================================================
-// JAVASCRIPT - PARTE 3B di 3: CLOUD SYNC E STORAGE
-// ========================================================
-function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
+
+async function mostraRisultatiStanza(dataSfida) {
     try {
-        let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-        const index = storico.findIndex(item => item.id === idScommessa);
-        const dati = { id: idScommessa, domanda: domanda, risposta_corretta: rispostaCorretta || null, data_scadenza_ufficiale: expirationTimestamp || null, data_salvataggio: new Date().toISOString() };
-        if (index !== -1) {
-            storico[index].risposta_corretta = rispostaCorretta || null;
-            if (expirationTimestamp) storico[index].data_scadenza_ufficiale = expirationTimestamp;
-        } else { storico.unshift(dati); }
-        if (storico.length > 15) storico = storico.slice(0, 15);
-        localStorage.setItem('storico_scommesse_global', JSON.stringify(storico));
+        const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
+        const chartsWrapper = document.getElementById('charts-wrapper');
+        const listContainer = document.getElementById('consolation-list');
+
+        if (chartsWrapper) chartsWrapper.innerHTML = "";
+        if (listContainer) listContainer.innerHTML = "";
+
+        const conteggi = { si: 0, no: 0 };
+        let totaleVoti = 0;
+
+        votiSnap.forEach(vDoc => {
+            const v = vDoc.data();
+            const scelta = v.scelta.toLowerCase().trim();
+            if (conteggi[scelta] !== undefined) { conteggi[scelta]++; totaleVoti++; }
+            
+            // Assegna gettoni Cloud ai profili se il match è chiuso ed è la prima volta che viene aperto
+            if (dataSfida.risposta_corretta && !dataSfida.annullata) {
+                const rispCorrettaNorm = dataSfida.risposta_corretta.toLowerCase().trim().replace("ì", "i");
+                const sceltaUtenteNorm = scelta.replace("ì", "i");
+                
+                if (sceltaUtenteNorm === rispCorrettaNorm && v.utente === localUsername) {
+                    modificaBilancioCloudClassifica(1);
+                } else if (sceltaUtenteNorm !== rispCorrettaNorm && v.utente === localUsername) {
+                    modificaBilancioCloudClassifica(-1);
+                }
+            }
+
+            const li = document.createElement('li');
+            li.style = "padding:10px 0; border-bottom:1px solid #F1F5F9; font-size:14px; font-weight:500;";
+            li.innerHTML = `👤 <b>${v.utente}</b> ha votato <span style="text-transform:uppercase;color:#2563EB;">${scelta}</span>`;
+            if (listContainer) listContainer.appendChild(li);
+        });
+
+        // Configura il titolo del pannello percentuali (Se c'è l'estratto, mostra il verdetto)
+        const pStatus = document.getElementById('room-percent-status');
+        if (dataSfida.risposta_corretta) {
+            pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ PENITENZA A: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
+        } else {
+            pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`;
+        }
+
+        // Disegna le barre dei risultati specchiate al 100% sulla tua foto
+        dataSfida.opzioni_disponibili.forEach(opz => {
+            const count = conteggi[opz.toLowerCase().trim()] || 0;
+            const pct = totaleVoti > 0 ? Math.round((count / totaleVoti) * 100) : 0;
+            
+            const resultField = document.createElement('div');
+            resultField.className = "bar-result-field";
+            resultField.innerHTML = `
+                <div style="text-transform:uppercase;">${opz}</div>
+                <div style="color:#64748B;">${pct}% (${count})</div>
+            `;
+            if (chartsWrapper) chartsWrapper.appendChild(resultField);
+        });
+
     } catch (e) { console.error(e); }
 }
 
-async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
-    if (!localStorage.getItem(`token_elaborato_${idScommessa}`)) {
-        let saldoAttuale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        saldoAttuale += valore;
-        localStorage.setItem('saldo_token_global', saldoAttuale);
-        localStorage.setItem(`token_elaborato_${idScommessa}`, "true");
-        
-        if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-        if (messaggioAlert) alert(messaggioAlert);
-
-        if (localUsername) {
-            const userIdNormalizzato = localUsername.toUpperCase().trim();
-            const userGlobalRef = doc(db, "utenti_globali", userIdNormalizzato);
-            try {
-                await setDoc(userGlobalRef, {
-                    username: userIdNormalizzato,
-                    sfide_indovinate: valore > 0 ? increment(1) : increment(0),
-                    sfide_sbagliate: valore < 0 ? increment(1) : increment(0),
-                    token_totali: increment(valore),
-                    ultimo_aggiornamento: new Date().toISOString()
-                }, { merge: true });
-            } catch (e) { console.error("Errore classifica cloud:", e); }
-        }
+async function modificaBilancioCloudClassifica(valore) {
+    if (!localStorage.getItem(`token_elaborato_${betId}`)) {
+        localStorage.setItem(`token_elaborato_${betId}`, "true");
+        const userIdNormalizzato = localUsername.toUpperCase().trim();
+        try {
+            await setDoc(doc(db, "utenti_globali", userIdNormalizzato), {
+                username: userIdNormalizzato,
+                token_totali: increment(valore),
+                ultimo_aggiornamento: new Date().toISOString()
+            }, { merge: true });
+            await aggiornaTokenGrafica();
+        } catch (e) { console.error(e); }
     }
 }
 
 async function aggiornaTokenGrafica() {
-    const contatore = document.getElementById('token-count');
-    const box = document.getElementById('token-display-wrapper');
-    if (!contatore || !box) return;
-
-    if (!localUsername) {
-        contatore.innerText = "Registra un nickname per attivare i gettoni 🪙";
-        box.className = "token-balance-box";
-        return;
-    }
-
+    const badge = document.getElementById('top-token-counter');
+    if (!badge || !localUsername) return;
     try {
         const userIdNormalizzato = localUsername.toUpperCase().trim();
-        const userGlobalRef = doc(db, "utenti_globali", userIdNormalizzato);
-        const docSnap = await getDoc(userGlobalRef);
-
+        const docSnap = await getDoc(doc(db, "utenti_globali", userIdNormalizzato));
         let saldo = 0;
-        if (docSnap.exists()) {
-            saldo = docSnap.data().token_totali || 0;
-        }
-        localStorage.setItem('saldo_token_global', saldo);
-
-        if (saldo > 0) {
-            contatore.innerText = `🪙 ${localUsername.toUpperCase()}: +${saldo} Gettoni (Fortunato 👑)`;
-            box.className = "token-balance-box token-positivo";
-        } else if (saldo < 0) {
-            contatore.innerText = `🌶️ ${localUsername.toUpperCase()}: ${saldo} Gettoni (A Rischio Penitenza)`;
-            box.className = "token-balance-box token-negativo";
-        } else {
-            contatore.innerText = `🤝 ${localUsername.toUpperCase()}: 0 Gettoni (In Pari)`;
-            box.className = "token-balance-box";
-        }
-    } catch (e) {
-        console.error("Errore sinc token:", e);
-        const saldoLocale = parseInt(localStorage.getItem('saldo_token_global')) || 0;
-        contatore.innerText = `Wallet Locale: ${saldoLocale} Token 🪙`;
-    }
+        if (docSnap.exists()) { saldo = docSnap.data().token_totali || 0; }
+        badge.innerText = `TOKENS x${saldo}`;
+    } catch (e) { console.error(e); }
 }
-window.aggiornaTokenGrafica = aggiornaTokenGrafica;
-
-function mostraStoricoSchermata() {
-    const container = document.getElementById('storico-container');
-    if (!container) return;
-    const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
-    if (storico.length === 0) { container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato.</p>"; return; }
-    let html = '<ul style="list-style:none; padding:0; margin:0;">';
-    storico.forEach(m => {
-        const ora = new Date();
-        const scade = m.data_scadenza_ufficiale ? new Date(m.data_scadenza_ufficiale) : new Date();
-        const isFinita = (ora >= scade) || m.risposta_corretta;
-        const b = isFinita ? `<span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span>` : `<span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>`;
-        html += `<li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>`;
-    });
-    container.innerHTML = html + "</ul>";
-}
-
