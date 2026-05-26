@@ -29,10 +29,8 @@ if (!betId) {
 
 const screenLoading = document.getElementById('screen-loading');
 const screenLogin = document.getElementById('screen-login');
-const screenDashboard = document.getElementById('screen-dashboard');
-const screenCreate = document.getElementById('screen-create');
 const screenPlayRoom = document.getElementById('screen-play-room');
-const topNavbar = document.getElementById('top-navbar');
+const storicoWrapper = document.getElementById('storico-wrapper');
 
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
@@ -41,72 +39,32 @@ async function inizializzaFlussoPiattaforma() {
     if (!localUsername) {
         if (screenLoading) screenLoading.style.display = 'none';
         if (screenLogin) screenLogin.classList.remove('hidden');
+        if (storicoWrapper) storicoWrapper.classList.add('hidden');
+        if (screenPlayRoom) screenPlayRoom.classList.add('hidden');
         
         document.getElementById('btn-salva-identita').onclick = () => {
             const nome = document.getElementById('input-username').value.trim();
             if (nome.length >= 2) {
                 localStorage.setItem('identita_utente_global', nome);
                 window.location.reload();
-            } else { alert("Inserisci un Nickname valido! 🎮"); }
+            } else { alert("Scegli un Nickname valido di almeno 2 caratteri! 🎮"); }
         };
         return;
     }
 
+    if (storicoWrapper) storicoWrapper.classList.remove('hidden');
+    mostraStoricoSchermata();
     await aggiornaTokenGrafica();
 
     if (!betId) {
-        if (screenLoading) screenLoading.style.display = 'none';
-        if (screenDashboard) screenDashboard.classList.remove('hidden');
-        caricaDashboardMaster();
-
-        document.getElementById('btn-vai-a-creazione').onclick = () => {
-            if (screenDashboard) screenDashboard.classList.add('hidden');
-            if (screenCreate) screenCreate.classList.remove('hidden');
-            
-            const oggi = new Date();
-            const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
-            
-            // ✅ RISOLTO: Estrazione stringhe data/ora nativa corretta senza crash di runtime
-            document.getElementById('input-data-scadenza').value = domani.toISOString().split('T')[0];
-            document.getElementById('input-ora-scadenza').value = "20:00";
-        };
-
-        document.getElementById('btn-torna-dash').onclick = (e) => {
-            e.preventDefault();
-            if (screenCreate) screenCreate.classList.add('hidden');
-            if (screenDashboard) screenDashboard.classList.remove('hidden');
-        };
-
-        document.getElementById('btn-lancia-sfida').onclick = async () => {
-            const q = document.getElementById('etQuestion').value.trim();
-            const r = document.getElementById('etReward').value.trim();
-            const p = document.getElementById('etPenalty').value.trim();
-            const inputData = document.getElementById('input-data-scadenza').value;
-            const inputOra = document.getElementById('input-ora-scadenza').value;
-
-            if (!q || !r || !p || !inputData || !inputOra) {
-                alert("Compila tutti i campi!"); return;
-            }
-
-            const scadenzaSelezionata = new Date(`${inputData}T${inputOra}`);
-            if (scadenzaSelezionata <= new Date()) {
-                alert("Imposta una data e orario futuri! ⏰"); return;
-            }
-
-            const uniqueId = Math.random().toString(36).substring(2, 8);
-            const dataScommessa = {
-                domanda: q, premio: r, penitenza: p,
-                opzioni_disponibili: ["si", "no"],
-                timestamp_scadenza: scadenzaSelezionata.getTime(),
-                creatore_nome: localUsername, risposta_corretta: "", chiusa_anticipo: false, annullata: false
-            };
-
-            await setDoc(doc(db, "scommesse", uniqueId), dataScommessa);
-            
-            const linkGara = `${window.location.origin}${window.location.pathname}?id=${uniqueId}`;
-            const testoMessaggio = encodeURIComponent(`🔮 *NUOVA SFIDA SU GUESSWHEN!*\n\n“${q}”\n\n🎁 *Premio:* ${r}\n🌶️ *Penitenza:* ${p}\n\nEntra e vota qui 👇\n${linkGara}`);
-            window.location.href = `https://whatsapp.com{testoMessaggio}`;
-        };
+        if (screenLoading) {
+            screenLoading.innerHTML = `
+                <div style='text-align:center;padding:10px;'>
+                    <h3 style='color:#1E293B;margin-bottom:5px;'>🔮 Benvenuto su GuessWhen!</h3>
+                    <p style='color:#64748B;font-size:13px;margin:0;'>Apri un link sfida ricevuto su WhatsApp per poter votare e scalare la classifica del gruppo! 🤝</p>
+                </div>
+            `;
+        }
     } else {
         if (screenLoading) screenLoading.style.display = 'none';
         if (screenPlayRoom) screenPlayRoom.classList.remove('hidden');
@@ -116,52 +74,8 @@ async function inizializzaFlussoPiattaforma() {
 
 inizializzaFlussoPiattaforma();
 // ========================================================
-// JAVASCRIPT - PARTE 3 di 5: RENDERING STORICO E AVVIO ROOM
-// ========================================================
-// ========================================================
 // JAVASCRIPT - PARTE 2 di 3: FLUSSO STANZA DI GIOCO E TIMER
 // ========================================================
-async function caricaDashboardMaster() {
-    const contenitore = document.getElementById('lista-sfide-master');
-    if (!contenitore) return;
-    contenitore.innerHTML = "<p style='text-align:center;color:#64748B;font-size:13px;'>Caricamento storico... ⏳</p>";
-
-    try {
-        const snap = await getDocs(collection(db, "scommesse"));
-        contenitore.innerHTML = "";
-        let contatoreSfide = 0;
-
-        snap.forEach(mDoc => {
-            const d = mDoc.data();
-            if (d.creatore_nome === localUsername) {
-                contatoreSfide++;
-                let badgeStato = `<div class="status-dot dot-attiva">• ATTIVA</div>`;
-                if (d.annullata) badgeStato = `<div class="status-dot dot-annullata">• ANNULLATA</div>`;
-                else if (d.risposta_corretta) badgeStato = `<div class="status-dot dot-chiusa">• CHIUSA</div>`;
-
-                const riga = document.createElement('div');
-                riga.className = "sub-card";
-                riga.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        ${badgeStato}
-                        <div class="id-tag">#${mDoc.id}</div>
-                    </div>
-                    <h3 style="text-align:left; font-size:18px; margin:0 0 10px 0; text-transform:none;">${d.domanda}</h3>
-                    <div style="font-size:13px; color:#64748B; margin-bottom:10px;">🎁 Premio: ${d.premio} | 👹 Penitenza: ${d.penitenza}</div>
-                    <div class="match-buttons">
-                        <a href="?id=${mDoc.id}" class="btn-main btn-black" style="padding:10px; font-size:13px; margin:0; flex:1;">Apri</a>
-                    </div>
-                `;
-                contenitore.appendChild(riga);
-            }
-        });
-
-        if (contatoreSfide === 0) {
-            contenitore.innerHTML = "<p style='text-align:center;color:#94A3B8;font-size:13px;padding:20px;'>Nessuna sfida creata da te. Clicca '+ Nuova' in alto per iniziare! 🚀</p>";
-        }
-    } catch (e) { console.error(e); }
-}
-
 async function eseguiStanzaGioco() {
     try {
         const docSnap = await getDoc(doc(db, "scommesse", betId));
@@ -173,8 +87,7 @@ async function eseguiStanzaGioco() {
         const data = docSnap.data();
         document.getElementById('room-id-tag').innerText = `#${betId}`;
         document.getElementById('room-question').innerText = data.domanda;
-        document.getElementById('room-reward').innerText = `🎁 Premio: ${data.premio}`;
-        document.getElementById('room-penalty').innerText = `👹 Penitenza: ${data.penitenza}`;
+        document.getElementById('room-reward').innerText = `🎁 Premio in palio: ${data.premio}`;
 
         const badgeStato = document.getElementById('room-status-badge');
         if (data.annullata) {
@@ -203,13 +116,18 @@ async function eseguiStanzaGioco() {
                 mostraRisultatiStanza(data);
             } else {
                 document.getElementById('room-vote-actions').classList.remove('hidden');
-                generaBottoniVotoStanza(data.opzioni_disponibili);
+                // ✅ SBLOCCATO: Carica le opzioni personalizzate create dal Master nell'App
+                generaBottoniVotoStanza(data.opzioni_disponibili || ["si", "no"]);
             }
         }
 
+        // Pannello Admin visibile solo al creatore della sfida
         if (data.creatore_nome === localUsername && !haEsito && !data.annullata) {
-            document.getElementById('room-admin-panel').classList.remove('hidden');
-            generaControlliAdmin(data);
+            const adminPanel = document.getElementById('room-admin-panel');
+            if (adminPanel) {
+                adminPanel.classList.remove('hidden');
+                generaControlliAdmin(data);
+            }
         }
     } catch (e) { console.error(e); }
 }
@@ -236,11 +154,13 @@ function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
     if (!container) return;
     container.innerHTML = "";
+    
+    // Genera i pulsanti dinamici basati sulle opzioni scelte dal Master
     opzioni.forEach(opzione => {
         const btn = document.createElement('button');
         btn.className = "btn-main";
         btn.style.marginBottom = "10px";
-        btn.innerText = `VOTA ${opzione.toUpperCase()}`; 
+        btn.innerText = opzione.toUpperCase(); 
         btn.onclick = () => inviaVotoStanza(opzione);
         container.appendChild(btn);
     });
@@ -257,7 +177,10 @@ async function inviaVotoStanza(opzioneScelta) {
             if (docVoto.data().utente.toUpperCase().trim() === usernameNormalizzato) giaVotato = true;
         });
 
-        if (giaVotato) { alert("⚠️ Hai già espresso un voto per questa sfida!"); return; }
+        if (giaVotato) { 
+            alert("⚠️ Hai già espresso un voto per questa sfida!"); 
+            return; 
+        }
 
         const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0, 3);
         await setDoc(doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno), {
@@ -268,7 +191,7 @@ async function inviaVotoStanza(opzioneScelta) {
         
         localStorage.setItem(`ha_votato_${betId}`, opzioneScelta.toLowerCase().trim());
         window.location.reload();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Errore salvataggio voto:", e); }
 }
 
 function generaControlliAdmin(dataScommessa) {
@@ -277,7 +200,8 @@ function generaControlliAdmin(dataScommessa) {
     layoutChoices.innerHTML = "";
 
     getDocs(collection(db, "scommesse", betId, "voti")).then(snap => {
-        document.getElementById('admin-vote-count-text').innerText = `${snap.size} voti`;
+        const txtVoti = document.getElementById('admin-vote-count-text');
+        if (txtVoti) txtVoti.innerText = `${snap.size} voti`;
     });
 
     dataScommessa.opzioni_disponibili.forEach(opzione => {
@@ -289,6 +213,9 @@ function generaControlliAdmin(dataScommessa) {
     });
 }
 
+// ========================================================
+// JAVASCRIPT - PARTE 5 di 5: ALGORITMO PONDERATO E STORICO
+// ========================================================
 async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
     const rispCorrettaNorm = opzioneVincente.toLowerCase().trim().replace("ì", "i");
     if (!confirm(`Vuoi impostare "${opzioneVincente.toUpperCase()}" come risultato definitivo?`)) return;
@@ -314,7 +241,6 @@ async function decretaRisultatoUfficialeCloud(opzioneVincente, tutteLeOpzioni) {
             if (sceltaUtenteNorm === rispCorrettaNorm) vincitoriPossibili.push(v.utente); else perdentiPossibili.push(v.utente);
         });
 
-        // ✅ RISOLTO: Corretto l'errore di battitura della variabile (da vincitoriPossibles a vincitoriPossibili)
         let vincitoreAssoluto = "Nessuno";
         if (vincitoriPossibili.length > 0) {
             const urnaVincitori = [];
@@ -355,13 +281,14 @@ async function mostraRisultatiStanza(dataSfida) {
         if (chartsWrapper) chartsWrapper.innerHTML = "";
         if (listContainer) listContainer.innerHTML = "";
 
-        const conteggi = { si: 0, no: 0 };
+        const conteggi = {};
+        dataSfida.opzioni_disponibili.forEach(opz => conteggi[opz.toLowerCase().trim()] = 0);
         let totaleVoti = 0;
 
         votiSnap.forEach(vDoc => {
             const v = vDoc.data();
             const scelta = v.scelta.toLowerCase().trim();
-            if (conteggi[scelta] !== undefined) { conteggi[scelta]++; totaleVoti++; }
+            if (conteggi[scelta] !== undefined) { conteggi[scelta]++; totaleVoti++; } else { conteggi[scelta] = 1; totaleVoti++; }
             
             if (dataSfida.risposta_corretta && !dataSfida.annullata) {
                 const rispCorrettaNorm = dataSfida.risposta_corretta.toLowerCase().trim().replace("ì", "i");
@@ -377,7 +304,7 @@ async function mostraRisultatiStanza(dataSfida) {
 
         const pStatus = document.getElementById('room-percent-status');
         if (dataSfida.risposta_corretta) {
-            pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ PENITENZA A: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
+            pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ ESTRATTO: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
         } else { pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`; }
 
         dataSfida.opzioni_disponibili.forEach(opz => {
@@ -416,6 +343,31 @@ async function aggiornaTokenGrafica() {
         let saldo = 0;
         if (docSnap.exists()) { saldo = docSnap.data().token_totali || 0; }
         badge.innerText = `TOKENS x${saldo}`;
+    } catch (e) { console.error(e); }
+}
+
+async function mostraStoricoSchermata() {
+    const container = document.getElementById('storico-container');
+    if (!container) return;
+    container.innerHTML = "<p style='text-align:center;color:#94A3B8;font-size:12px;'>Caricamento storico... ⏳</p>";
+    
+    try {
+        const snap = await getDocs(collection(db, "scommesse"));
+        container.innerHTML = "";
+        let count = 0;
+        let html = '<ul style="list-style:none; padding:0; margin:0;">';
+        
+        snap.forEach(mDoc => {
+            const m = mDoc.data();
+            count++;
+            const ora = new Date().getTime();
+            const isFinita = (ora >= m.timestamp_scadenza) || m.risposta_corretta !== "";
+            const b = isFinita ? `<span style="background:#E2E8F0;font-size:10px;padding:2px 6px;border-radius:4px;color:#475569;font-weight:bold;">Conclusa</span>` : `<span style="background:#E0F2FE;font-size:10px;padding:2px 6px;border-radius:4px;color:#0369A1;font-weight:bold;">Attiva</span>`;
+            html += `<li class="historico-list-item"><span>📌 <a href="?id=${mDoc.id}">${m.domanda}</a></span> ${b}</li>`;
+        });
+        
+        if (count === 0) { container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato nel server.</p>"; }
+        else { container.innerHTML = html + "</ul>"; }
     } catch (e) { console.error(e); }
 }
 
