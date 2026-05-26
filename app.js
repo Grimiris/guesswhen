@@ -13,7 +13,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Estrazione dell'ID sfida dall'indirizzo URL del browser
+// ========================================================
+// JAVASCRIPT - PARTE 2 di 6: PARSING URL E BOTTONE TOKEN
+// ========================================================
 const urlParams = new URLSearchParams(window.location.search);
 let betId = urlParams.get('id') || urlParams.get('ID');
 
@@ -31,24 +33,22 @@ if (!betId) {
 const loadingEl = document.getElementById('loading');
 let localUsername = localStorage.getItem('identita_utente_global') || "";
 
-// Avvio immediato dei componenti di background
 if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
 if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
 
-// Gestione del pulsante salvavita per spendere 1 Token Bonus
 const btnUsaToken = document.getElementById('btn-usa-token');
 if (btnUsaToken) {
     btnUsaToken.onclick = () => {
         let tokenAttuali = parseInt(localStorage.getItem('saldo_token_global')) || 0;
         if (tokenAttuali <= 0) {
-            alert("Non hai abbastanza Token attivi per salvarti! Devi scontare la penitenza. 😭");
+            alert("Non hai abbastanza Token attivi per salvarti! 😭");
             return;
         }
-        if (confirm("Vuoi spendere 1 Token Bonus per annullare la tua penitenza minore davanti agli amici?")) {
+        if (confirm("Vuoi spendere 1 Token Bonus per annullare la penitenza?")) {
             tokenAttuali -= 1;
             localStorage.setItem('saldo_token_global', tokenAttuali);
             if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
-            alert("🛡️ Token utilizzato con successo! Sei salvo dalla penitenza minore.");
+            alert("🛡️ Token utilizzato! Sei salvo.");
         }
     };
 }
@@ -58,8 +58,9 @@ if (!betId) {
 } else {
     betId = betId.trim();
     controllaStato();
-}// ========================================================
-// JAVASCRIPT - PARTE 2 di 3: LOGICA DI STATO E BOTTONI VOTO
+}
+// ========================================================
+// JAVASCRIPT - PARTE 3 di 6: ENGINE CORE DI STATO CLOUD
 // ========================================================
 async function controllaStato() {
     try {
@@ -68,7 +69,7 @@ async function controllaStato() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato nel database server.`;
+            if (loadingEl) loadingEl.innerText = `Scommessa o Quiz (${betId}) non trovato.`;
             return;
         }
 
@@ -115,7 +116,9 @@ async function controllaStato() {
         if (oraCorrente >= dataScadenza || isChiusaManualmente || haRispostaUfficiale) {
             if (timerContainerEl) timerContainerEl.innerHTML = `<span class="status-badge" style="background:#E2E8F0; color:#334155;">Scommessa Chiusa 🔒</span>`;
             if (voteSectionEl) voteSectionEl.classList.add('hidden');
-            if (resultsSectionEl) resultsSectionEl.classList.remove('hidden');
+            if (resultsSectionEl) {
+                resultsSectionEl.classList.remove('hidden');
+            }
             mostraRisultati(opzioniDisponibili, data.risposta_corretta, data.vincitore_estratto, data.perdente_estratto, data.annullata);
         } else {
             avviaTimer(dataScadenza);
@@ -159,7 +162,9 @@ async function controllaStato() {
         }
     } catch (errore) { console.error("Errore controllaStato:", errore); }
 }
-
+// ========================================================
+// JAVASCRIPT - PARTE 4 di 6: FUNZIONI OPERATIVE VOTO
+// ========================================================
 function avviaTimer(dataScadenza) {
     const container = document.getElementById('timer-container');
     if (!container) return;
@@ -227,7 +232,7 @@ async function inviaVoto(opzioneScelta) {
     } catch (e) { console.error(e); }
 }
 // ========================================================
-// JAVASCRIPT - PARTE 3 di 3: CALCOLO VERDETTI E STORICI
+// JAVASCRIPT - PARTE 5 di 6: RENDERING RISULTATI
 // ========================================================
 async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, perdenteEstratto, isAnnullataCloud) {
     try {
@@ -347,7 +352,9 @@ async function mostraRisultati(opzioni, rispostaCorretta, vincitoreEstratto, per
         }
     } catch (e) { console.error(e); }
 }
-
+// ========================================================
+// JAVASCRIPT - PARTE 6 di 6: STORICO E PORTAFOGLIO
+// ========================================================
 function salvaInStoricoLocale(idScommessa, domanda, rispostaCorretta, expirationTimestamp) {
     try {
         let storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
@@ -378,6 +385,47 @@ async function modificaBilancioToken(idScommessa, valore, messaggioAlert) {
             try {
                 await setDoc(userGlobalRef, {
                     username: userIdNormalizzato,
-sfide_indovinate: valore > 0 ? increment(1) : increment(0),sfide_sbagliate: valore < 0 ? increment(1) : increment(0),token_totali: increment(valore),ultimo_aggiornamento: new Date().toISOString()}, { merge: true });} catch (e) { console.error("Errore classifica cloud:", e); }}}}function aggiornaTokenGrafica() {const contatore = document.getElementById('token-count');const box = document.querySelector('.token-balance-box');if (contatore && box) {const saldo = parseInt(localStorage.getItem('saldo_token_global')) || 0;if (saldo > 0) { contatore.innerText = +${saldo} (Bonus 👑); box.className = "token-balance-box token-positivo"; }else if (saldo < 0) { contatore.innerText = ${saldo} (Malus 🌶️); box.className = "token-balance-box token-negativo"; }else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }}}window.aggiornaTokenGrafica = aggiornaTokenGrafica;function mostraStoricoSchermata() {const container = document.getElementById('storico-container');if (!container) return;const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];if (storico.length === 0) { container.innerHTML = "Nessun match registrato."; return; }let html = '';storico.forEach(m => {const ora = new Date();const scade = m.data_scadenza_ufficiale ? new Date(m.data_scadenza_ufficiale) : new Date();const isFinita = (ora >= scade) || m.risposta_corretta;const b = isFinita ? <span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span> : <span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>;html += <li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>;});container.innerHTML = html + "";}function mostraSchermataInizialeSenzaId() {const l = document.getElementById('loading');if (l) l.innerHTML = <div style='text-align:center;padding:20px;'><h2 style='color:#1E293B;margin-bottom:10px;'>🔮 Benvenuto su GuessWhen!</h2><p style='color:#64748B;font-size:14px;'>Apri un link sfida ricevuto su WhatsApp per poter votare, accumulare gettoni e scalare la classifica del tuo gruppo di amici! 🤝</p></div>;if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();}
+                    sfide_indovinate: valore > 0 ? increment(1) : increment(0),
+                    sfide_sbagliate: valore < 0 ? increment(1) : increment(0),
+                    token_totali: increment(valore),
+                    ultimo_aggiornamento: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) { console.error("Errore classifica cloud:", e); }
+        }
+    }
+}
 
+function aggiornaTokenGrafica() {
+    const contatore = document.getElementById('token-count');
+    const box = document.querySelector('.token-balance-box');
+    if (contatore && box) {
+        const saldo = parseInt(localStorage.getItem('saldo_token_global')) || 0;
+        if (saldo > 0) { contatore.innerText = `+${saldo} (Bonus 👑)`; box.className = "token-balance-box token-positivo"; }
+        else if (saldo < 0) { contatore.innerText = `${saldo} (Malus 🌶️)`; box.className = "token-balance-box token-negativo"; }
+        else { contatore.innerText = "0 (In Pari 🤝)"; box.className = "token-balance-box"; }
+    }
+}
+window.aggiornaTokenGrafica = aggiornaTokenGrafica;
 
+function mostraStoricoSchermata() {
+    const container = document.getElementById('storico-container');
+    if (!container) return;
+    const storico = JSON.parse(localStorage.getItem('storico_scommesse_global')) || [];
+    if (storico.length === 0) { container.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Nessun match registrato.</p>"; return; }
+    let html = '<ul style="list-style:none; padding:0; margin:0;">';
+    storico.forEach(m => {
+        const ora = new Date();
+        const scade = m.data_scadenza_ufficiale ? new Date(m.data_scadenza_ufficiale) : new Date();
+        const isFinita = (ora >= scade) || m.risposta_corretta;
+        const b = isFinita ? `<span style="background:#E2E8F0;font-size:10px;padding:2px 4px;border-radius:4px;color:#475569;">Conclusa</span>` : `<span style="background:#E0F2FE;font-size:10px;padding:2px 4px;border-radius:4px;color:#0369A1;">Attiva</span>`;
+        html += `<li style="padding:6px 0; border-bottom:1px solid #F1F5F9; font-size:12px;"><a href="?id=${m.id}" style="text-decoration:none; color:#2563EB; font-weight:500;">${m.domanda}</a> ${b}</li>`;
+    });
+    container.innerHTML = html + "</ul>";
+}
+
+function mostraSchermataInizialeSenzaId() {
+    const l = document.getElementById('loading');
+    if (l) l.innerHTML = `<div style='text-align:center;padding:20px;'><h2 style='color:#1E293B;margin-bottom:10px;'>🔮 Benvenuto su GuessWhen!</h2><p style='color:#64748B;font-size:14px;'>Apri un link sfida ricevuto su WhatsApp per poter votare, accumulare gettoni e scalare la classifica del tuo gruppo di amici! 🤝</p></div>`;
+    if (typeof mostraStoricoSchermata === "function") mostraStoricoSchermata();
+    if (typeof aggiornaTokenGrafica === "function") aggiornaTokenGrafica();
+}
