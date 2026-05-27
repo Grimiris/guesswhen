@@ -209,7 +209,7 @@ function avviaTimerStanza(timestampScadenza) {
     setInterval(aggiorna, 1000);
 }
 // ========================================================
-// JAVASCRIPT - PARTE 4 di 5: ENGINE DI VOTO E REVIEWS
+// JAVASCRIPT - PARTE 4 di 5: ENGINE DI VOTO CON ANTI-CHEAT E STELLE
 // ========================================================
 function generaBottoniVotoStanza(opzioni) {
     const container = document.getElementById('options-container');
@@ -226,23 +226,61 @@ function generaBottoniVotoStanza(opzioni) {
     });
 }
 
+// 🧬 Algoritmo Anti-Cheat: Genera un'impronta hardware univoca e cifrata del browser
+function generaDeviceFingerprint() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = "top";
+    ctx.font = "14px 'Arial'";
+    ctx.fillText("GuessWhen_AntiCheat_2026", 2, 2);
+    
+    const dataUrl = canvas.toDataURL();
+    let hash = 0;
+    for (let i = 0; i < dataUrl.length; i++) {
+        hash = (hash << 5) - hash + dataUrl.charCodeAt(i);
+        hash |= 0;
+    }
+    
+    const hardwareSpec = `${navigator.hardwareConcurrency || 4}-${screen.colorDepth}-${navigator.userAgent.length}`;
+    return "GW-" + Math.abs(hash).toString(36) + "-" + btoa(hardwareSpec).substring(0, 8);
+}
+
 async function inviaVotoStanza(opzioneScelta) {
     try {
         const usernameNormalizzato = localUsername.toUpperCase().trim();
+        const hardwareFingerprint = generaDeviceFingerprint(); // Genera l'impronta hardware
+        
         const votiRef = collection(db, "scommesse", betId, "voti");
         const snapshotVoti = await getDocs(votiRef);
         
         let giaVotato = false;
+        
+        // 🛡️ CONTROLLO INCROCIATO DI SICUREZZA: Blocca per Nickname o per Impronta Hardware
         snapshotVoti.forEach(docVoto => {
-            if (docVoto.data().utente.toUpperCase().trim() === usernameNormalizzato) giaVotato = true;
+            const vData = docVoto.data();
+            if (vData.utente.toUpperCase().trim() === usernameNormalizzato) {
+                giaVotato = true;
+            }
+            if (vData.device_id === hardwareFingerprint) {
+                giaVotato = true;
+            }
         });
 
-        if (giaVotato) { alert("⚠️ Hai già espresso un voto per questa sfida!"); return; }
+        // Controllo locale preventivo sul browser corrente
+        if (giaVotato || localStorage.getItem(`ha_votato_${betId}`)) { 
+            alert("🔒 [ANTI-CHEAT SYSTEM] Questo dispositivo o nickname ha già espresso un voto per questa sfida!"); 
+            localStorage.setItem(`ha_votato_${betId}`, opzioneScelta.toLowerCase().trim());
+            window.location.reload();
+            return; 
+        }
 
         const identificatoreVotoEsterno = usernameNormalizzato + "_" + betId.substring(0, 3);
+        
+        // Salva il voto iniettando l'ID hardware blindato nel database cloud
         await setDoc(doc(db, "scommesse", betId, "voti", identificatoreVotoEsterno), {
             utente: localUsername, 
             scelta: opzioneScelta.toLowerCase().trim(),
+            device_id: hardwareFingerprint, // ID di sicurezza archiviato nel cloud
             timestamp: new Date().toISOString()
         });
         
@@ -290,9 +328,8 @@ function inizializzaValutazioneStelle() {
         };
     });
 }
-// ========================================================
-// JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO ATTIVE
-// ========================================================
+
+
 // ========================================================
 // JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO ATTIVE
 // ========================================================
