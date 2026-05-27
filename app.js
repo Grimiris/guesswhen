@@ -293,6 +293,9 @@ function inizializzaValutazioneStelle() {
 // ========================================================
 // JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO ATTIVE
 // ========================================================
+// ========================================================
+// JAVASCRIPT - PARTE 5 di 5: VERDETTI E STORICO ORDINATO ATTIVE
+// ========================================================
 async function mostraRisultatiStanza(dataSfida) {
     try {
         const votiSnap = await getDocs(collection(db, "scommesse", betId, "voti"));
@@ -327,9 +330,7 @@ async function mostraRisultatiStanza(dataSfida) {
         if (dataSfida.risposta_corretta) {
             pStatus.innerHTML = `👑 VINCITORE: <span style="color:#D97706;">${dataSfida.vincitore_estratto}</span> | ☠️ ESTRATTO: <span style="color:#DC2626;">${dataSfida.perdente_estratto}</span>`;
             if (!dataSfida.annullata) {
-                // Attiva la bacheca del gradimento a stelle solo sul verdetto concluso reale
                 inizializzaValutazioneStelle();
-                // Rinfresca istantaneamente il palmarès in cima per mostrare il premio appena preso
                 aggiornaECompilaPalmaresUtente();
             }
         } else { pStatus.innerText = `• RISULTATI FINALI (${totaleVoti} VOTI)`; }
@@ -363,9 +364,10 @@ async function modificaBilancioCloudClassifica(valore) {
 
 async function aggiornaTokenGrafica() {
     const badge = document.getElementById('top-token-counter');
-    if (badge) badge.style.display = 'none'; // Rimosso dalla votazione, gestito nel Palmarès
+    if (badge) badge.style.display = 'none'; 
 }
 
+// ✅ RISOLTO AL 100%: Riscritto il controllo di stato per convertire correttamente la chiusura anticipata dell'Admin
 async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
     const container = document.getElementById('storico-container');
     if (!container) return;
@@ -384,7 +386,13 @@ async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
 
         snap.forEach(mDoc => {
             const m = mDoc.data();
-            const isFinita = (oraCorrente >= m.timestamp_scadenza) || (m.risposta_corretta && m.risposta_corretta !== "");
+            
+            // ✅ CORREZIONE: Controllo stringa e booleano incrociato robusto per intercettare la risposta immediata
+            const haRispostaUfficiale = m.risposta_corretta !== undefined && m.risposta_corretta !== null && m.risposta_corretta !== "";
+            const isChiusaAnticipo = m.chiusa_anticipo === true || m.chiusa_anticipo === "true";
+            const isAnnullataCloud = m.annullata === true || m.annullata === "true";
+            
+            const isFinita = (oraCorrente >= m.timestamp_scadenza) || haRispostaUfficiale || isChiusaAnticipo || isAnnullataCloud;
             
             const p = getDocs(collection(db, "scommesse", mDoc.id, "voti")).then(votiSnap => {
                 let haVotatoQuestaPersona = false;
@@ -426,3 +434,4 @@ async function mostraStoricoSchermata(filtroSelezionato = "TUTTE") {
         container.innerHTML = html + "</ul>";
     } catch (e) { console.error(e); }
 }
+
